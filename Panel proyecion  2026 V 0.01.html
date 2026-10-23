@@ -1,0 +1,2661 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Panel de Costos, Producción y Punto de Equilibrio Multi-Producto</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.1.0/dist/chartjs-plugin-annotation.min.js"></script>
+<style>
+  :root {
+    --bg-main: #0d0f12;
+    --bg-card: #16191e;
+    --bg-card-hover: #1e2229;
+    --bg-input: #0f1115;
+    --border-color: #262a33;
+    --border-focus: #3b82f6;
+    
+    --text-primary: #f3f4f6;
+    --text-secondary: #9ca3af;
+    --text-muted: #6b7280;
+    
+    --accent: #3b82f6;
+    --accent-hover: #2563eb;
+    --good: #10b981;
+    --good-bg: rgba(16, 185, 129, 0.1);
+    --bad: #ef4444;
+    --bad-bg: rgba(239, 68, 68, 0.1);
+    --gold: #f59e0b;
+    --gold-soft: #fcd34d;
+    
+    --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 16px;
+    
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+    box-sizing: border-box;
+  }
+
+  [data-theme="light"] {
+    --bg-main: #f3f4f6;
+    --bg-card: #ffffff;
+    --bg-card-hover: #f9fafb;
+    --bg-input: #f3f4f6;
+    --border-color: #e5e7eb;
+    --border-focus: #2563eb;
+    
+    --text-primary: #111827;
+    --text-secondary: #4b5563;
+    --text-muted: #9ca3af;
+    
+    --accent: #2563eb;
+    --accent-hover: #1d4ed8;
+    --good: #059669;
+    --good-bg: rgba(5, 150, 105, 0.1);
+    --bad: #dc2626;
+    --bad-bg: rgba(220, 38, 38, 0.1);
+    --gold: #d97706;
+    --gold-soft: #b45309;
+    
+    --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; background: var(--bg-main); color: var(--text-primary); -webkit-font-smoothing: antialiased; transition: background-color 0.3s, color 0.3s; }
+  .num { font-feature-settings: "tnum"; font-weight: 600; }
+
+  header.top {
+    padding: 16px 24px;
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    transition: background-color 0.3s, border-color 0.3s;
+  }
+  header.top .brand { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+  header.top .empresa { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
+  header.top .empresa b { color: var(--text-primary); font-weight: 600; }
+  header.top h1 { font-size: 20px; font-weight: 700; margin: 2px 0 0; color: var(--text-primary); letter-spacing: -0.02em; }
+  header.top .meta { font-size: 12px; color: var(--text-secondary); }
+  header.top .meta b { color: var(--text-primary); font-weight: 600; }
+  
+  .header-actions { display: flex; align-items: center; gap: 12px; }
+  .quick-switch { display: flex; align-items: center; gap: 8px; }
+  .quick-switch label { font-size: 12px; color: var(--text-secondary); font-weight: 500; }
+  .quick-switch select, .theme-toggle {
+    background: var(--bg-input);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 7px 12px;
+    font-size: 13px;
+    outline: none;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .theme-toggle { display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; padding: 0; font-size: 15px; }
+  .theme-toggle:hover, .quick-switch select:hover { border-color: var(--text-muted); }
+
+  .tabs-container { position: fixed; left: 0; top: 90px; display: flex; flex-direction: column; gap: 6px; z-index: 40; }
+  .data-tab {
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+    border-left: none;
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    padding: 12px 9px;
+    font-size: 10.5px;
+    letter-spacing: .08em;
+    font-weight: 600;
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    cursor: pointer;
+    box-shadow: var(--shadow);
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .data-tab:hover { background: var(--bg-card-hover); color: var(--text-primary); transform: translateX(2px); }
+  .data-tab.active { background: var(--accent); color: #ffffff; border-color: var(--accent); transform: translateX(4px); }
+  .data-tab .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--bad); }
+  .data-tab .dot.ok { background: var(--good); }
+
+  .backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); z-index: 45; opacity: 0; pointer-events: none; transition: opacity .25s ease; }
+  .backdrop.show { opacity: 1; pointer-events: auto; }
+
+  .panel-input {
+    position: fixed; top: 0; left: 0; bottom: 0;
+    width: min(94vw, 500px);
+    background: var(--bg-card);
+    color: var(--text-primary);
+    padding: 20px clamp(14px, 3vw, 24px);
+    overflow-y: auto;
+    transform: translateX(-100%);
+    transition: transform .3s cubic-bezier(0.16, 1, 0.3, 1);
+    z-index: 50;
+    box-shadow: var(--shadow);
+    border-right: 1px solid var(--border-color);
+  }
+  .panel-input.open { transform: translateX(0); }
+  .drawer-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+  .drawer-head h2.title { font-size: 17px; font-weight: 600; margin: 0; color: var(--text-primary); }
+  .close-btn { background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 50%; width: 30px; height: 30px; font-size: 16px; cursor: pointer; color: var(--text-secondary); display: flex; align-items: center; justify-content: center; }
+  .close-btn:hover { background: var(--border-color); color: var(--text-primary); }
+  .drawer-sub { font-size: 12.5px; color: var(--text-secondary); margin: 0 0 16px; }
+  
+  .tab-group { display: none; }
+  .tab-group.active { display: block; }
+
+  .panel-input h2.section { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); margin: 20px 0 10px; padding-bottom: 4px; border-bottom: 1px solid var(--border-color); }
+  
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; align-items: start; }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field.full { grid-column: 1 / -1; }
+  .field label { font-size: 11.5px; color: var(--text-secondary); font-weight: 500; }
+  .field .hint { font-size: 10.5px; color: var(--text-muted); margin-top: 2px; line-height: 1.3; }
+  .field input, .field select {
+    font-family: inherit; font-size: 12.5px; padding: 8px 10px;
+    border: 1px solid var(--border-color); border-radius: var(--radius-sm);
+    background: var(--bg-input); color: var(--text-primary); width: 100%; outline: none; transition: border-color 0.2s;
+  }
+  .field input:focus, .field select:focus { border-color: var(--accent); }
+
+  .product-picker { display: flex; gap: 6px; margin-bottom: 8px; }
+  .product-picker select { flex: 1; min-width: 0; padding: 8px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-primary); outline: none; font-size: 12.5px; }
+  .product-actions { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+  .product-actions button { font-size: 11.5px; padding: 7px 11px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-primary); cursor: pointer; font-weight: 500; }
+  .product-actions button:hover { background: var(--border-color); }
+  .product-actions button.danger { color: var(--bad); }
+
+  table.entry { width: 100%; border-collapse: collapse; margin-bottom: 8px; table-layout: fixed; }
+  table.entry th { text-align: left; font-size: 10.5px; font-weight: 600; color: var(--text-muted); padding: 6px 4px; border-bottom: 1px solid var(--border-color); text-transform: uppercase; }
+  table.entry td { padding: 3px 2px; vertical-align: middle; }
+  table.entry td.total { font-weight: 600; text-align: right; white-space: nowrap; font-size: 12px; color: var(--text-primary); }
+  table.entry input[type=text] { width: 100%; min-width: 0; }
+  table.entry input[type=number] { width: 100%; min-width: 0; text-align: right; }
+  table.entry input { font-size: 12px; padding: 6px 8px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background: var(--bg-input); color: var(--text-primary); outline: none; }
+  table.entry input:focus { border-color: var(--accent); }
+  
+  .del-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 15px; padding: 2px 4px; line-height: 1; display: block; margin: 0 auto; border-radius: 4px; }
+  .del-btn:hover { color: var(--bad); background: var(--bad-bg); }
+  .add-btn { font-size: 11.5px; font-weight: 600; color: var(--accent); background: rgba(59, 130, 246, 0.1); border: 1px dashed var(--accent); border-radius: var(--radius-sm); padding: 7px 10px; cursor: pointer; margin-top: 4px; width: 100%; }
+  .add-btn:hover { background: rgba(59, 130, 246, 0.2); }
+  .group-total { display: flex; justify-content: space-between; font-size: 12.5px; margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border-color); color: var(--text-secondary); }
+  .group-total b { font-size: 13.5px; color: var(--text-primary); }
+
+  .save-bar { position: sticky; bottom: -20px; margin-top: 20px; padding: 14px 0; border-top: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 8px; background: var(--bg-card); }
+  #btn-guardar { width: 100%; font-size: 12.5px; font-weight: 600; padding: 10px; border-radius: var(--radius-sm); border: none; background: var(--accent); color: #ffffff; cursor: pointer; transition: background 0.2s; }
+  #btn-guardar:hover { background: var(--accent-hover); }
+  
+  .reset-row { display: flex; gap: 8px; width: 100%; }
+  .reset-row button { flex: 1; font-size: 11.5px; padding: 7px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-secondary); cursor: pointer; }
+  .reset-row button:hover { background: var(--border-color); color: var(--text-primary); }
+  .save-note { font-size: 10.5px; color: var(--text-muted); text-align: center; min-height: 14px; }
+
+  /* Hero: gráfica PE a la izquierda, indicadores a la derecha */
+  .hero-pe {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(300px, 0.92fr);
+    gap: 14px;
+    margin-bottom: 18px;
+    align-items: stretch;
+  }
+  .hero-pe .chart-card {
+    margin-bottom: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .hero-pe .chart-wrap.tall {
+    flex: 1;
+    height: auto;
+    min-height: 260px;
+  }
+  .hero-kpis {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .hero-kpis .kpi {
+    padding: 12px 14px;
+    min-height: 0;
+  }
+  @media (max-width: 980px) {
+    .hero-pe { grid-template-columns: 1fr; }
+    .hero-pe .chart-wrap.tall { min-height: 220px; height: 220px; }
+  }
+
+  /* ESTILOS DEL DASHBOARD PRINCIPAL - OPTIMIZACIÓN DE ESPACIO */
+  .panel-dash { padding: 20px clamp(12px, 3vw, 28px) 40px; max-width: 1400px; margin: 0 auto; }
+  .section-label { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 10px; display: flex; align-items: center; justify-content: space-between; }
+  
+  .decision-banner { border-radius: var(--radius-md); padding: 12px 16px; margin-bottom: 16px; font-size: 13px; line-height: 1.4; border: 1px solid var(--border-color); background: var(--bg-card); }
+  .decision-banner.good { border-color: var(--good); background: var(--good-bg); }
+  .decision-banner.bad { border-color: var(--bad); background: var(--bad-bg); }
+  .decision-banner .tag { font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; display: block; margin-bottom: 2px; }
+  .decision-banner.good .tag { color: var(--good); }
+  .decision-banner.bad .tag { color: var(--bad); }
+  .decision-banner .cta { background: none; border: none; color: var(--accent); text-decoration: underline; cursor: pointer; font-size: 12.5px; padding: 0; margin-top: 4px; display: inline-block; font-weight: 500; }
+
+  /* KPI Grid Compacta */
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .kpi { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 14px 16px; transition: border-color 0.2s; }
+  .kpi:hover { border-color: var(--text-muted); }
+  .kpi .label { font-size: 11.5px; color: var(--text-secondary); font-weight: 500; }
+  .kpi .value { font-size: 20px; font-weight: 700; margin-top: 4px; color: var(--text-primary); letter-spacing: -0.02em; }
+  .kpi .sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .kpi .value.good { color: var(--good); }
+  .kpi .value.bad { color: var(--bad); }
+  .kpi .value.gold { color: var(--gold); }
+
+  /* TABLA DE MEZCLA DE VENTAS Y EQUILIBRIO MULTI-PRODUCTO */
+  .table-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 16px; margin-bottom: 20px; overflow-x: auto; }
+  .table-card-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+  .table-card-header h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-secondary); margin: 0; font-weight: 600; }
+  .table-card-header .badge { font-size: 11px; padding: 4px 8px; border-radius: var(--radius-sm); background: var(--bg-input); color: var(--accent); border: 1px solid var(--border-color); font-weight: 600; }
+  
+  table.data-grid { width: 100%; border-collapse: collapse; font-size: 12.5px; min-width: 980px; }
+  table.data-grid th { background: var(--bg-input); color: var(--text-secondary); font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; padding: 8px 10px; text-align: right; border-bottom: 1px solid var(--border-color); font-weight: 600; }
+  table.data-grid th:first-child { text-align: left; }
+  table.data-grid td { padding: 9px 10px; border-bottom: 1px solid var(--border-color); text-align: right; vertical-align: middle; }
+  table.data-grid td:first-child { text-anchor: left; text-align: left; font-weight: 600; color: var(--text-primary); }
+  table.data-grid tr:hover td { background: var(--bg-card-hover); }
+  table.data-grid tr.highlight-row td { background: rgba(59, 130, 246, 0.08); font-weight: 600; }
+  table.data-grid tfoot td { font-weight: 700; border-top: 2px solid var(--border-color); border-bottom: none; background: var(--bg-input); color: var(--text-primary); }
+
+  /* Layout de Gráficas en Cuadrícula Eficiente */
+  .charts-grid { display: flex; flex-direction: column; gap: 16px; }
+  
+  .chart-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 16px; display: flex; flex-direction: column; justify-content: space-between; }
+  .chart-card-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+  .chart-card h3 { font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-secondary); margin: 0; font-weight: 600; }
+  .chart-filter { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--text-secondary); }
+  .chart-filter select { background: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 4px 8px; font-size: 11.5px; outline: none; }
+  
+  .chart-wrap { position: relative; width: 100%; height: 210px; }
+  .chart-wrap.tall { height: 260px; }
+  .chart-wrap.auto { height: 220px; min-height: 180px; }
+  .chart-wrap canvas { width: 100% !important; height: 100% !important; }
+  .hero-pe .chart-wrap.tall { min-height: 280px; }
+  .chart-note { font-size: 11px; color: var(--text-muted); padding: 8px 0 0; border-top: 1px dashed var(--border-color); margin-top: 10px; line-height: 1.3; }
+
+  /* ESTILOS DE PERSONALIZACIÓN Y AJUSTES */
+  .color-picker-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+  .color-field { display: flex; align-items: center; justify-content: space-between; background: var(--bg-input); padding: 8px 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); }
+  .color-field label { font-size: 11.5px; color: var(--text-secondary); font-weight: 500; }
+  .color-field input[type="color"] { border: none; width: 28px; height: 28px; border-radius: 4px; cursor: pointer; background: transparent; }
+
+  .order-list { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+  .order-item { display: flex; align-items: center; justify-content: space-between; background: var(--bg-input); padding: 8px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); font-size: 12px; font-weight: 500; }
+  .order-item .actions { display: flex; gap: 4px; }
+  .order-item button { background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 4px; padding: 2px 8px; cursor: pointer; font-size: 12px; }
+  .order-item button:hover { background: var(--border-color); }
+
+  .io-desc { font-size: 11.5px; color: var(--text-secondary); line-height: 1.4; margin: 0 0 10px; }
+  .io-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+  .io-btn { flex: 1; min-width: 140px; font-size: 12px; font-weight: 500; padding: 9px 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-primary); cursor: pointer; }
+  .io-btn:hover { background: var(--border-color); }
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.65); backdrop-filter: blur(3px); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 16px; }
+  .modal-box { background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: var(--radius-lg); box-shadow: var(--shadow); width: min(100%, 440px); max-height: 85vh; display: flex; flex-direction: column; padding: 20px; }
+  .modal-box h3 { margin: 0 0 6px; font-size: 16px; }
+  .modal-box p { margin: 0 0 12px; font-size: 12.5px; color: var(--text-secondary); line-height: 1.4; white-space: pre-line; }
+  .modal-all { font-size: 12px; color: var(--text-secondary); display: flex; gap: 8px; align-items: center; margin-bottom: 8px; cursor: pointer; }
+  .modal-list { overflow-y: auto; display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+  .modal-item { display: flex; gap: 10px; align-items: center; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 9px 12px; cursor: pointer; font-size: 13px; }
+  .modal-item small { display: block; color: var(--text-muted); font-size: 11px; margin-top: 1px; }
+  .modal-actions { display: flex; gap: 8px; }
+  .modal-ok { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 600; }
+  .modal-ok:hover { background: var(--accent-hover); }
+  .modal-text { width: 100%; margin: 0 0 14px; padding: 10px 12px; font-family: inherit; font-size: 13px; color: var(--text-primary); background: var(--bg-input); border: 1px solid var(--border-color); border-radius: var(--radius-sm); outline: none; }
+  .modal-text:focus { border-color: var(--accent); }
+  .mini-btn { font-size: 11.5px; padding: 6px 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-secondary); cursor: pointer; }
+  .mini-btn:hover { background: var(--border-color); color: var(--text-primary); }
+  .season-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap: 8px; margin-bottom: 14px; }
+  .season-cell span { display: block; font-size: 10.5px; color: var(--text-muted); margin-bottom: 3px; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; }
+  .season-input { display: flex; align-items: center; gap: 4px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 0 8px; }
+  .season-input:focus-within { border-color: var(--accent); }
+  .season-input input { width: 100%; min-width: 0; background: transparent; border: none; outline: none; color: var(--text-primary); font-family: inherit; font-size: 12.5px; padding: 7px 0; text-align: right; }
+  .season-input em { font-style: normal; font-size: 11.5px; color: var(--text-muted); }
+  .season-kpis { margin: 14px 0 0; }
+  hr.sep { border: none; border-top: 1px solid var(--border-color); margin: 24px 0; }
+
+  ::selection { background: var(--accent); color: #ffffff; }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div>
+    <span class="brand">PANEL FINANCIERO &middot; COSTOS, MEZCLA Y PUNTO DE EQUILIBRIO</span>
+    <div class="empresa">Empresa: <b id="hEmpresa">Sin nombre</b></div>
+    <h1 id="hProducto">Vista General de la Empresa</h1>
+    <div class="meta">Ciclo Base: <b id="hCiclo">Mes</b> &nbsp;&middot;&nbsp; Capacidad Total: <b id="hCap">0</b> unid. &nbsp;&middot;&nbsp; Venta Estimada: <b id="hPrecio">Q0.00</b></div>
+  </div>
+  <div class="header-actions">
+    <div class="quick-switch">
+      <label for="companySelect">Empresa:</label>
+      <select id="companySelect"></select>
+      <button class="theme-toggle" id="btnNewCompany" title="Nueva empresa" aria-label="Nueva empresa" type="button">+</button>
+    </div>
+    <div class="quick-switch">
+      <label for="quickSelect">Seleccionar Vista:</label>
+      <select id="quickSelect"></select>
+    </div>
+    <button class="theme-toggle" id="themeToggle" title="Cambiar tema" aria-label="Cambiar tema">🌙</button>
+  </div>
+</header>
+
+<!-- PESTAÑAS LATERALES -->
+<div class="tabs-container">
+  <button class="data-tab" data-tab="datos" type="button"><span class="dot" id="tabDot"></span>PRODUCTOS</button>
+  <button class="data-tab" data-tab="generales" type="button">COSTOS GENERALES</button>
+  <button class="data-tab" data-tab="inversion" type="button">INVERSIÓN</button>
+  <button class="data-tab" data-tab="proyeccion" type="button">PROYECCIÓN</button>
+  <button class="data-tab" data-tab="ajustes" type="button">🎨 COLORES Y ORDEN</button>
+  <button class="data-tab" data-tab="importar" type="button">EXCEL / JSON</button>
+</div>
+
+<div class="backdrop" id="backdrop"></div>
+
+<section class="panel-input" id="drawer">
+  <div class="drawer-head">
+    <h2 class="title" id="drawerTitle">Catálogo de Productos</h2>
+    <button class="close-btn" id="btnClose" type="button" aria-label="Cerrar">&times;</button>
+  </div>
+  <p class="drawer-sub">Ingresa la estructura de costos y personaliza la presentación del panel.</p>
+
+  <!-- PESTAÑA 1: DATOS DEL PRODUCTO -->
+  <div class="tab-group" id="group-datos">
+    <h2 class="section">Datos de la Empresa</h2>
+    <div class="field-row">
+      <div class="field full">
+        <label for="in-empresa">Nombre de la empresa / negocio</label>
+        <input id="in-empresa" type="text" placeholder="Ej. Fábrica de Calzado El Norte">
+      </div>
+    </div>
+
+    <h2 class="section">Selección de Producto (<span id="productCount">0</span>)</h2>
+    <div class="product-picker">
+      <select id="productSelect"></select>
+    </div>
+    <div class="product-actions" id="productActionButtons">
+      <button id="btn-nuevo" type="button">+ Agregar Producto</button>
+      <button id="btn-duplicar" type="button">Duplicar</button>
+      <button id="btn-eliminar" type="button" class="danger">Eliminar</button>
+    </div>
+
+    <div id="formFieldsContainer">
+      <div class="field-row" style="margin-top:12px;">
+        <div class="field full">
+          <label for="in-producto">Nombre del producto</label>
+          <input id="in-producto" type="text" placeholder="Ej. Zapato Ejecutivo">
+        </div>
+        <div class="field">
+          <label for="in-ciclo">Ciclo de tiempo</label>
+          <input id="in-ciclo" type="text" placeholder="Ej. mes">
+        </div>
+        <div class="field">
+          <label for="in-capacidad">Producción / Venta esperada (unid.)</label>
+          <input id="in-capacidad" type="number" min="0" step="1" value="0">
+        </div>
+        <div class="field">
+          <label for="in-precio">Precio por venta (Q)</label>
+          <input id="in-precio" type="number" min="0" step="0.01" value="0">
+          <div class="hint" id="hint-venta-total">Venta total del ciclo: Q0.00</div>
+        </div>
+        <div class="field">
+          <label for="in-personas">Cantidad de personas por venta</label>
+          <input id="in-personas" type="number" min="0" step="1" value="0">
+          <div class="hint" id="hint-personas-total">Por defecto 0. Si pones 4 o 5, se multiplica por las ventas.</div>
+        </div>
+      </div>
+
+      <h2 class="section">Costos fijos directos del producto (por ciclo)</h2>
+      <table class="entry">
+        <thead><tr><th style="width:38%">Concepto</th><th style="width:18%">Cant.</th><th style="width:22%">Costo U.</th><th style="width:16%;text-align:right">Total</th><th style="width:6%"></th></tr></thead>
+        <tbody id="tbl-fijos"></tbody>
+      </table>
+      <button class="add-btn" data-add="fijos" type="button">+ Agregar costo fijo directo</button>
+      <div class="group-total"><span>Costos fijos directos totales</span><b id="sum-fijos" class="num">Q0.00</b></div>
+
+      <h2 class="section">Costos variables por ciclo (según volumen estimado)</h2>
+      <p class="hint" style="font-size:11px; color:var(--text-muted); margin-top:-6px; margin-bottom:8px;">Define tus materiales directos e insumos para el total de la producción esperada.</p>
+      <table class="entry">
+        <thead><tr><th style="width:38%">Concepto</th><th style="width:18%">Cant.</th><th style="width:22%">Costo U.</th><th style="width:16%;text-align:right">Total</th><th style="width:6%"></th></tr></thead>
+        <tbody id="tbl-variables"></tbody>
+      </table>
+      <button class="add-btn" data-add="variables" type="button">+ Agregar costo variable</button>
+      <div class="group-total"><span>Costos variables totales</span><b id="sum-variables" class="num">Q0.00</b></div>
+    </div>
+  </div>
+
+  <!-- PESTAÑA COSTOS GENERALES -->
+  <div class="tab-group" id="group-generales">
+    <div id="formGeneralesContainer">
+      <h2 class="section">Costos Generales / Estructura Global</h2>
+      <p style="font-size: 11.5px; color: var(--text-secondary); margin-bottom: 12px; line-height: 1.4;">
+        Costos fijos globales que mantiene el negocio obligatoriamente (renta local, nómina administrativa, contador, internet). Se prorratean entre los productos para determinar el punto de equilibrio global.
+      </p>
+      <table class="entry">
+        <thead><tr><th style="width:38%">Concepto General</th><th style="width:18%">Cant.</th><th style="width:22%">Costo U.</th><th style="width:16%;text-align:right">Total</th><th style="width:6%"></th></tr></thead>
+        <tbody id="tbl-generales"></tbody>
+      </table>
+      <button class="add-btn" id="btn-add-general" type="button">+ Agregar costo general</button>
+      <div class="group-total"><span>Total Costos Generales Globales</span><b id="sum-generales" class="num">Q0.00</b></div>
+    </div>
+  </div>
+
+  <!-- PESTAÑA INVERSIÓN -->
+  <div class="tab-group" id="group-inversion">
+    <div id="formInversionContainer">
+      <h2 class="section">Inversión inicial / maquinaria y activos</h2>
+      <table class="entry">
+        <thead><tr><th style="width:38%">Activo / Recurso</th><th style="width:18%">Cant.</th><th style="width:22%">Costo U.</th><th style="width:16%;text-align:right">Total</th><th style="width:6%"></th></tr></thead>
+        <tbody id="tbl-inversion"></tbody>
+      </table>
+      <button class="add-btn" data-add="inversion" type="button">+ Agregar inversión del producto</button>
+      <div class="group-total"><span>Inversión total del producto</span><b id="sum-inversion" class="num">Q0.00</b></div>
+    </div>
+  </div>
+
+  <!-- PESTAÑA PROYECCIÓN -->
+  <div class="tab-group" id="group-proyeccion">
+    <div id="formProyeccionContainer">
+      <h2 class="section">Parámetros de Crecimiento</h2>
+      <div class="field-row">
+        <div class="field">
+          <label for="in-crecimiento">Crecimiento esperado (%)</label>
+          <input id="in-crecimiento" type="number" step="0.1" value="0">
+        </div>
+        <div class="field">
+          <label for="in-tipo-crecimiento">Frecuencia</label>
+          <select id="in-tipo-crecimiento">
+            <option value="ciclo">Por ciclo / mes</option>
+            <option value="anio">Por año</option>
+          </select>
+        </div>
+        <div class="field full">
+          <label for="in-ciclosanio">Ciclos por año</label>
+          <input id="in-ciclosanio" type="number" min="1" step="1" value="12">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PESTAÑA NUEVA: AJUSTE DE COLORES Y ORDEN DE GRÁFICAS -->
+  <div class="tab-group" id="group-ajustes">
+    <h2 class="section">Personalización de Colores</h2>
+    <div class="color-picker-row">
+      <div class="color-field">
+        <label for="clr-good">Ganancia / Positivo</label>
+        <input type="color" id="clr-good">
+      </div>
+      <div class="color-field">
+        <label for="clr-bad">Pérdida / Costos</label>
+        <input type="color" id="clr-bad">
+      </div>
+      <div class="color-field">
+        <label for="clr-accent">Ingresos / Accent</label>
+        <input type="color" id="clr-accent">
+      </div>
+      <div class="color-field">
+        <label for="clr-gold">Punto Equilibrio</label>
+        <input type="color" id="clr-gold">
+      </div>
+    </div>
+
+    <h2 class="section">Orden de las Gráficas</h2>
+    <p class="hint" style="font-size:11px; color:var(--text-muted); margin-bottom:8px;">Suba o baje para definir el orden en que desea ver cada gráfica en el dashboard.</p>
+    <div class="order-list" id="chartOrderList"></div>
+  </div>
+
+  <!-- PESTAÑA IMPORTAR / EXPORTAR -->
+  <div class="tab-group" id="group-importar">
+    <h2 class="section">Respaldo Excel (.xlsx)</h2>
+    <p class="io-desc">Exporta e importa toda tu empresa con hojas para productos, costos generales e inversiones.</p>
+    <div class="io-row">
+      <button id="btn-exportar-excel" class="io-btn btn-export" type="button">📊 Exportar a Excel</button>
+      <button id="btn-importar-excel" class="io-btn btn-import" type="button">📥 Importar Excel</button>
+      <input type="file" id="file-input-excel" accept=".xlsx,.xls" style="display:none;">
+    </div>
+
+    <h2 class="section">Respaldo Técnico (.json)</h2>
+    <div class="io-row">
+      <button id="btn-exportar" class="io-btn btn-export" type="button">📤 Exportar JSON</button>
+      <button id="btn-importar" class="io-btn btn-import" type="button">📥 Importar JSON</button>
+      <input type="file" id="file-input" accept=".json" style="display:none;">
+    </div>
+    <h2 class="section">Mis empresas (<span id="companyCount">1</span>)</h2>
+    <p class="io-desc">Aquí están todas tus empresas. Importar nunca borra las demás: cada empresa se guarda con su nombre. Al exportar puedes elegir cuántas incluir.</p>
+    <div class="field">
+      <select id="libSelect"></select>
+    </div>
+    <div class="io-row" style="margin-top:8px;">
+      <button id="btn-lib-load" class="io-btn btn-import" type="button">🔀 Cambiar a esta empresa</button>
+      <button id="btn-lib-del" class="io-btn btn-export" type="button" style="color:var(--bad);">🗑 Eliminar</button>
+    </div>
+    <div class="save-note" id="ioNote"></div>
+  </div>
+
+  <div class="save-bar">
+    <button id="btn-guardar" type="button">Aplicar y Guardar Cambios</button>
+    <div class="reset-row">
+      <button id="btn-example" type="button">Cargar Ejemplo Multi-Producto</button>
+      <button id="btn-reset" type="button">Vaciar Datos</button>
+    </div>
+    <div class="save-note" id="saveNote">Sincronización automática activa.</div>
+  </div>
+</section>
+
+<!-- CONTENIDO PRINCIPAL / DASHBOARD -->
+<section class="panel-dash">
+
+  <!-- HERO: gráfica PE (izquierda) + indicadores (derecha) -->
+  <div class="hero-pe">
+    <div class="chart-card" id="card-chartVolumen" data-chart-id="chartVolumen">
+      <div class="chart-card-header">
+        <h3>GRÁFICO DE PUNTO DE EQUILIBRIO, COSTOS TOTALES E INGRESOS</h3>
+      </div>
+      <div class="chart-wrap tall" id="chartVolumen"></div>
+      <div class="chart-note">Intersección clave entre Ingresos Totales y Costos Totales. El punto dorado indica el volumen mínimo a producir para evitar pérdidas.</div>
+    </div>
+
+    <div class="hero-kpis">
+      <div class="kpi">
+        <div class="label">Productos / Costos Generales</div>
+        <div class="value num" id="co-count">0</div>
+        <div class="sub">Gastos: <span id="co-generales">Q0</span></div>
+      </div>
+      <div class="kpi">
+        <div class="label">Inversión Inicial Total</div>
+        <div class="value num" id="co-inversion">Q0</div>
+        <div class="sub">equipamiento acumulado</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Ingresos Totales Est.</div>
+        <div class="value num" id="co-ingresos">Q0</div>
+        <div class="sub">ventas por ciclo</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Utilidad Neta Consolidada</div>
+        <div class="value num" id="co-utilidad">Q0</div>
+        <div class="sub">tras absorción de costos</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Punto de Equilibrio</div>
+        <div class="value num gold" id="kpi-pe">0</div>
+        <div class="sub" id="kpi-peSub">unidades mínimas requeridas</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Retorno Inversión (Estático)</div>
+        <div class="value num" id="kpi-tiempo">0 ciclos</div>
+        <div class="sub" id="kpi-tiempoSub">al ritmo actual</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="banner" class="decision-banner bad">
+    <span class="tag">DIAGNÓSTICO RÁPIDO</span>
+    <span id="bannerText">Cargando datos del sistema...</span><br>
+    <button class="cta" id="bannerCta" type="button">Abrir editor de datos →</button>
+  </div>
+
+  <div class="section-label">
+    <span>ANALIZANDO VISTA: <span id="dashProductName" style="color:var(--accent);">TODOS LOS PRODUCTOS</span></span>
+    <span style="font-size:11px; text-transform:none; font-weight:normal; color:var(--text-muted);">Prorrateo por Mezcla de Producción</span>
+  </div>
+
+  <!-- Indicadores de detalle (debajo de la gráfica) -->
+  <div class="kpi-grid">
+    <div class="kpi"><div class="label">Costo Neto Total / Ciclo</div><div class="value num" id="kpi-costoNeto">Q0</div><div class="sub" id="kpi-costoNetoSub">fijos + variables</div></div>
+    <div class="kpi"><div class="label" id="lbl-costoUnidad">Costo Neto / Unidad</div><div class="value num" id="kpi-costoUnidad">Q0</div><div class="sub" id="sub-costoUnidad">unitario completo</div></div>
+    <div class="kpi"><div class="label">Utilidad del Ciclo</div><div class="value num" id="kpi-utilidad">Q0</div><div class="sub" id="kpi-utilidadSub">ingreso &minus; costo total</div></div>
+    <div class="kpi"><div class="label">Margen Contribución</div><div class="value num" id="kpi-rent">0%</div><div class="sub">margen total del ciclo</div></div>
+    <div class="kpi"><div class="label">Margen Global Promedio</div><div class="value num" id="co-margen">0%</div><div class="sub" id="co-topSub">sobre ventas totales</div></div>
+  </div>
+
+  <!-- TABLA MAESTRA DE PUNTO DE EQUILIBRIO POR PRODUCTO -->
+  <div class="table-card">
+    <div class="table-card-header">
+      <h3>DESGLOSE DE VENTAS, COSTOS Y UNIDADES PARA PUNTO DE EQUILIBRIO POR PRODUCTO</h3>
+      <span class="badge" id="pe-global-badge">Equilibrio Global: 0 Unidades</span>
+    </div>
+    <table class="data-grid">
+      <thead>
+        <tr>
+          <th>Producto</th>
+          <th>Venta Est. (Unid)</th>
+          <th>Personas / Clientes</th>
+          <th>Mezcla (%)</th>
+          <th>Costo Fijo</th>
+          <th>Precio Venta (Total)</th>
+          <th>Costo Var. Total</th>
+          <th>Margen Contrib. Total</th>
+          <th>% Utilidad</th>
+          <th>Utilidad neta</th>
+          <th style="color:var(--gold);">Unidades Equilibrio</th>
+          <th style="color:var(--gold);">Venta Equilibrio (Q)</th>
+        </tr>
+      </thead>
+      <tbody id="tbl-break-even-body">
+      </tbody>
+      <tfoot id="tbl-break-even-foot">
+      </tfoot>
+    </table>
+  </div>
+
+  <!-- LAYOUT DE GRÁFICAS SECUNDARIAS -->
+  <div class="charts-grid" id="chartsContainer">
+
+    <!-- Gráfica: Comparativo Utilidades -->
+    <div class="chart-card" id="card-chartComparativo" data-chart-id="chartComparativo">
+      <div class="chart-card-header">
+        <h3>UTILIDAD POR PRODUCTO (NETA)</h3>
+      </div>
+      <div class="chart-wrap auto" id="chartComparativo"></div>
+      <div class="chart-note" id="noteComparativo">Muestra el aporte neto de cada producto a la empresa tras asignar gastos fijos directos y generales.</div>
+    </div>
+
+    <!-- Gráfica: Composición del Costo -->
+    <div class="chart-card" id="card-chartComposicion" data-chart-id="chartComposicion">
+      <div class="chart-card-header">
+        <h3>ESTRUCTURA DE COSTOS DE LA VISTA</h3>
+      </div>
+      <div class="chart-wrap" id="chartComposicion"></div>
+      <div class="chart-note">Proporción de costos variables, fijos directos y gastos de estructura asignados.</div>
+    </div>
+
+    <!-- Gráfica: Proyección en el Tiempo -->
+    <div class="chart-card" id="card-chartProyeccion" data-chart-id="chartProyeccion">
+      <div class="chart-card-header">
+        <h3>PROYECCIÓN TEMPORAL Y RECUPERACIÓN DE INVERSIÓN ACUMULADA</h3>
+        <div class="chart-filter">
+          <label for="selectProyAños">Horizonte:</label>
+          <select id="selectProyAños">
+            <option value="m12" selected>12 Meses</option>
+            <option value="m24">24 Meses</option>
+            <option value="m36">36 Meses</option>
+            <option value="y5">5 Años</option>
+            <option value="y10">10 Años</option>
+          </select>
+        </div>
+      </div>
+      <div class="chart-wrap tall" id="chartProyeccion"></div>
+      <div class="chart-note" id="noteProyeccion">Evolución del flujo acumulado contrastado contra la Inversión Inicial (Línea Dorada).</div>
+    </div>
+
+    <!-- Gráfica: Variación de ventas por ciclo (12 ciclos) -->
+    <div class="chart-card" id="card-chartEstacionalidad" data-chart-id="chartEstacionalidad">
+      <div class="chart-card-header">
+        <h3>VARIACIÓN DE VENTAS POR CICLO (12 CICLOS)</h3>
+        <button class="mini-btn" id="btnSeasonReset" type="button">Restablecer a 0%</button>
+      </div>
+      <div class="season-grid" id="seasonInputs"></div>
+      <div class="chart-wrap tall" id="chartEstacionalidad"></div>
+      <div class="kpi-grid season-kpis" id="seasonKpis"></div>
+      <div class="chart-note" id="noteEstacionalidad"></div>
+    </div>
+
+  </div>
+</section>
+
+<script>
+(function(){
+  "use strict";
+  var STORAGE_KEY = "costos-dashboard-v8-multipe";
+  var ALL_ID = "__ALL__";
+  var SEASON_N = 12;
+
+  var chartTitles = {
+    chartComparativo: "Utilidad por Producto (Neta)",
+    chartComposicion: "Estructura de Costos",
+    chartProyeccion: "Proyección Temporal y Recuperación",
+    chartEstacionalidad: "Variación de Ventas por Ciclo (12 ciclos)"
+  };
+
+  /* El plugin de etiquetas se carga como script pero no se registra solo: lo activamos aquí. */
+  if (typeof Chart !== "undefined" && window.ChartDataLabels) {
+    try { Chart.register(window.ChartDataLabels); } catch(e) {}
+  }
+
+  var themeToggleBtn = document.getElementById("themeToggle");
+  function setTheme(theme) {
+    document.documentElement.setAttribute("data-theme", theme);
+    themeToggleBtn.textContent = theme === "dark" ? "☀️" : "🌙";
+    localStorage.setItem("theme", theme);
+  }
+  
+  var savedTheme = localStorage.getItem("theme") || "dark";
+  setTheme(savedTheme);
+
+  themeToggleBtn.addEventListener("click", function() {
+    var currentTheme = document.documentElement.getAttribute("data-theme");
+    setTheme(currentTheme === "dark" ? "light" : "dark");
+    recalc();
+  });
+
+  /* Orden de productos por el número al inicio del nombre: "1 Tour", "2 ...", "16 Inmersión". Sin número van al final (A-Z). */
+  function productSortKey(p){
+    var m = String((p && p.producto) || "").match(/^\s*(\d+(?:[.,]\d+)?)/);
+    return m ? parseFloat(m[1].replace(",", ".")) : null;
+  }
+  function sortProducts(st){
+    if(!st || !st.products) return st;
+    st.products.sort(function(a, b){
+      var ka = productSortKey(a), kb = productSortKey(b);
+      if(ka !== null && kb !== null && ka !== kb) return ka - kb;
+      if(ka !== null && kb === null) return -1;
+      if(ka === null && kb !== null) return 1;
+      return String(a.producto||"").localeCompare(String(b.producto||""), "es", { numeric: true, sensitivity: "base" });
+    });
+    return st;
+  }
+
+  function uid(){ return "p"+Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+
+  function blankProduct(nombre){
+    return {id:uid(), producto:nombre||"", ciclo:"mes", capacidad:100, precio:100, personasPorVenta:0, crecimiento:0, tipoCrecimiento:"ciclo", ciclosAnio:12, inversion:[], fijos:[], variables:[], estacion:[0,0,0,0,0,0,0,0,0,0,0,0]};
+  }
+
+  function exampleState(){
+    var p1 = {
+      id: "p1_zapato", producto: "Zapato Ejecutivo de Cuero", ciclo: "mes", capacidad: 500, precio: 250, crecimiento: 1.5, tipoCrecimiento: "ciclo", ciclosAnio: 12,
+      inversion: [{c: "Horma y Maquinaria de Corte", cant: 1, cu: 45000}],
+      fijos: [{c: "Mantenimiento Taller", cant: 1, cu: 1500}],
+      variables: [
+        {c: "Cuero y Pieles Directas", cant: 500, cu: 80},
+        {c: "Suelas y Pegamento", cant: 500, cu: 35},
+        {c: "Empaque y Cajas", cant: 500, cu: 10}
+      ]
+    };
+
+    var p2 = {
+      id: "p2_tenis", producto: "Tenis Deportivo Urbano", ciclo: "mes", capacidad: 800, precio: 180, crecimiento: 2, tipoCrecimiento: "ciclo", ciclosAnio: 12,
+      inversion: [{c: "Moldes de Inyección de Suela", cant: 1, cu: 30000}],
+      fijos: [{c: "Supervisión de Línea", cant: 1, cu: 2000}],
+      variables: [
+        {c: "Textil sintético y malla", cant: 800, cu: 40},
+        {c: "Suela de goma sintética", cant: 800, cu: 30},
+        {c: "Agujetas y accesorios", cant: 800, cu: 5}
+      ]
+    };
+
+    var p3 = {
+      id: "p3_bota", producto: "Bota Industrial de Seguridad", ciclo: "mes", capacidad: 300, precio: 320, crecimiento: 1, tipoCrecimiento: "ciclo", ciclosAnio: 12,
+      inversion: [{c: "Certificación de Seguridad y Moldes", cant: 1, cu: 25000}],
+      fijos: [{c: "Control de Calidad", cant: 1, cu: 1200}],
+      variables: [
+        {c: "Cuero reforzado y casquillo", cant: 300, cu: 110},
+        {c: "Suela dieléctrica", cant: 300, cu: 50}
+      ]
+    };
+
+    return {
+      empresa: "Calzados y Manufacturas del Sur", 
+      generales: [
+        {c: "Renta de Planta Industrial", cant: 1, cu: 12000},
+        {c: "Sueldos Administrativos y Ventas", cant: 1, cu: 15000},
+        {c: "Energía Eléctrica y Servicios Globales", cant: 1, cu: 3500}
+      ],
+      products: [p1, p2, p3], 
+      activeId: ALL_ID,
+      customColors: {
+        good: "#10b981",
+        bad: "#ef4444",
+        accent: "#3b82f6",
+        gold: "#f59e0b"
+      },
+      chartOrder: ["chartComparativo", "chartComposicion", "chartProyeccion", "chartEstacionalidad"]
+    };
+  }
+
+  var COMP_KEY = "costos-dashboard-v9-companies";
+  var LIB_KEY_OLD = "costos-dashboard-v8-library";
+  var companies = {};          // id -> datos de cada empresa
+  var activeCompanyId = null;
+  function cid(){ return "c"+Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+
+  function loadStore(){
+    try{
+      var raw = localStorage.getItem(COMP_KEY);
+      if(raw){
+        var o = JSON.parse(raw);
+        if(o && o.items && Object.keys(o.items).length){
+          companies = o.items;
+          activeCompanyId = o.items[o.active] ? o.active : Object.keys(o.items)[0];
+          return companies[activeCompanyId];
+        }
+      }
+    }catch(e){}
+    /* Primera vez con multi-empresa: migrar la empresa actual y las que se hubieran archivado antes */
+    var st = null;
+    try{ var r = localStorage.getItem(STORAGE_KEY); if(r) st = JSON.parse(r); }catch(e){}
+    if(!st || !st.products) st = exampleState();
+    activeCompanyId = cid();
+    companies[activeCompanyId] = st;
+    try{
+      var lib = JSON.parse(localStorage.getItem(LIB_KEY_OLD) || "{}");
+      Object.keys(lib).forEach(function(k){
+        var s2 = lib[k];
+        if(s2 && s2.products){ if(!(s2.empresa||"").trim()) s2.empresa = k; companies[cid()] = s2; }
+      });
+    }catch(e){}
+    return st;
+  }
+  function save(){
+    try{
+      companies[activeCompanyId] = state;
+      localStorage.setItem(COMP_KEY, JSON.stringify({ active: activeCompanyId, items: companies }));
+      return true;
+    }catch(e){ return false; }
+  }
+
+  var state = loadStore();
+  if(!state.generales) state.generales = [];
+  if(!state.products || !state.products.length){ var np=blankProduct(""); state.products=[np]; state.activeId=np.id; }
+  state.products.forEach(function(p){ if(p.personasPorVenta==null) p.personasPorVenta = 0; ensureEst(p); });
+  if(!state.customColors) state.customColors = { good: "#10b981", bad: "#ef4444", accent: "#3b82f6", gold: "#f59e0b" };
+  if(!state.chartOrder) state.chartOrder = ["chartComparativo", "chartComposicion", "chartProyeccion", "chartEstacionalidad"];
+  state.chartOrder = state.chartOrder.filter(function(id){ return id !== "chartVolumen"; });
+  if(state.chartOrder.indexOf("chartEstacionalidad") < 0) state.chartOrder.push("chartEstacionalidad");
+  if(state.chartOrder.length === 0) state.chartOrder = ["chartComparativo", "chartComposicion", "chartProyeccion", "chartEstacionalidad"];
+
+  function active(){ 
+    if(state.activeId === ALL_ID) return null;
+    return state.products.find(function(p){ return p.id===state.activeId; }) || state.products[0]; 
+  }
+
+  function fmtQ(n){ if(!isFinite(n)) n=0; return "Q"+n.toLocaleString("es-GT",{minimumFractionDigits:2,maximumFractionDigits:2}); }
+  function fmtNum(n,dec){ if(!isFinite(n)) n=0; return n.toLocaleString("es-GT",{minimumFractionDigits:dec||0,maximumFractionDigits:dec||0}); }
+  function fmtQAbbrev(n){
+    if(!isFinite(n)) n=0;
+    var sign = n<0?"-":""; n=Math.abs(n);
+    if(n>=1e9) return sign+"Q"+(n/1e9).toFixed(1)+"B";
+    if(n>=1e6) return sign+"Q"+(n/1e6).toFixed(1)+"M";
+    if(n>=1e3) return sign+"Q"+(n/1e3).toFixed(0)+"K";
+    return sign+"Q"+n.toFixed(0);
+  }
+  function esc(s){
+    return String(s==null?"":s).replace(/[&<>"']/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; });
+  }
+
+  var drawer = document.getElementById("drawer");
+  var backdrop = document.getElementById("backdrop");
+  var drawerTitle = document.getElementById("drawerTitle");
+  var tabs = document.querySelectorAll(".data-tab");
+  var tabGroups = document.querySelectorAll(".tab-group");
+
+  var titles = {
+    datos: "Edición de Producto",
+    generales: "Costos Fijos Generales (Estructura)",
+    inversion: "Inversión Inicial",
+    proyeccion: "Parámetros Proyección",
+    ajustes: "Personalización de Colores y Orden",
+    importar: "Importación / Exportación"
+  };
+
+  function switchTab(tabName){
+    tabs.forEach(function(b){
+      if(b.getAttribute("data-tab")===tabName) b.classList.add("active");
+      else b.classList.remove("active");
+    });
+    tabGroups.forEach(function(g){
+      if(g.id==="group-"+tabName) g.classList.add("active");
+      else g.classList.remove("active");
+    });
+    if(titles[tabName]) drawerTitle.textContent = titles[tabName];
+    if(tabName === "ajustes") renderAjustesTab();
+  }
+
+  function openDrawer(tabName){
+    if(state.activeId === ALL_ID && tabName !== "generales" && tabName !== "importar" && tabName !== "ajustes") {
+      state.activeId = state.products[0].id;
+      switchTo(state.activeId);
+    }
+    switchTab(tabName || "datos");
+    drawer.classList.add("open");
+    backdrop.classList.add("show");
+  }
+
+  function closeDrawer(){
+    drawer.classList.remove("open");
+    backdrop.classList.remove("show");
+    tabs.forEach(function(b){ b.classList.remove("active"); });
+  }
+
+  tabs.forEach(function(btn){
+    btn.addEventListener("click", function(){ openDrawer(btn.getAttribute("data-tab")); });
+  });
+
+  document.getElementById("btnClose").addEventListener("click", closeDrawer);
+  backdrop.addEventListener("click", closeDrawer);
+  document.getElementById("bannerCta").addEventListener("click", function(){ openDrawer("datos"); });
+  document.addEventListener("keydown", function(e){ if(e.key==="Escape") closeDrawer(); });
+
+  function productLabel(p,i){ return (p.producto && p.producto.trim()) ? p.producto : "Producto "+(i+1); }
+
+  function renderSelectors(){
+    sortProducts(state);
+    var sel1 = document.getElementById("productSelect");
+    var sel2 = document.getElementById("quickSelect");
+    [sel1, sel2].forEach(function(sel){
+      sel.innerHTML = "";
+      
+      var optAll = document.createElement("option");
+      optAll.value = ALL_ID;
+      optAll.textContent = "🌐 TODA LA EMPRESA (TODOS LOS PRODUCTOS)";
+      if(state.activeId === ALL_ID) optAll.selected = true;
+      sel.appendChild(optAll);
+
+      state.products.forEach(function(p,i){
+        var opt = document.createElement("option");
+        opt.value = p.id; opt.textContent = productLabel(p,i);
+        if(p.id===state.activeId) opt.selected = true;
+        sel.appendChild(opt);
+      });
+    });
+    document.getElementById("productCount").textContent = state.products.length;
+  }
+
+  function switchTo(id){
+    state.activeId = id;
+    renderSelectors();
+    updateFormVisibility();
+    refreshForms();
+    recalc();
+  }
+
+  /* Vuelve a llenar todos los formularios con los datos de la empresa activa (nombre, costos generales y producto). */
+  function refreshForms(){
+    document.getElementById("in-empresa").value = state.empresa||"";
+    renderGeneralesTable();
+    if(active()){
+      fillFormFromActive();
+      renderAllTables();
+    }
+  }
+
+  function updateFormVisibility(){
+    var isAll = (state.activeId === ALL_ID);
+    document.getElementById("productActionButtons").style.display = isAll ? "none" : "flex";
+    document.getElementById("formFieldsContainer").style.display = isAll ? "none" : "block";
+    document.getElementById("formInversionContainer").style.display = isAll ? "none" : "block";
+    document.getElementById("formProyeccionContainer").style.display = isAll ? "none" : "block";
+  }
+
+  document.getElementById("productSelect").addEventListener("change", function(e){ switchTo(e.target.value); });
+  document.getElementById("quickSelect").addEventListener("change", function(e){ switchTo(e.target.value); });
+
+  document.getElementById("btn-nuevo").addEventListener("click", function(){
+    var p = blankProduct("");
+    state.products.push(p);
+    switchTo(p.id);
+    save();
+  });
+
+  document.getElementById("btn-duplicar").addEventListener("click", function(){
+    var cur = active();
+    if(!cur) return;
+    var copy = JSON.parse(JSON.stringify(cur));
+    copy.id = uid();
+    copy.producto = (cur.producto||"Producto")+" (Copia)";
+    var idx = state.products.findIndex(function(p){return p.id===cur.id;});
+    state.products.splice(idx+1,0,copy);
+    switchTo(copy.id);
+    save();
+  });
+
+  document.getElementById("btn-eliminar").addEventListener("click", function(){
+    if(state.products.length<=1){ alert("Debe permanecer al menos un producto."); return; }
+    var cur = active();
+    if(!cur) return;
+    if(!confirm('¿Eliminar "'+productLabel(cur, state.products.indexOf(cur))+'"?')) return;
+    var idx = state.products.findIndex(function(p){return p.id===cur.id;});
+    state.products.splice(idx,1);
+    var next = state.products[Math.max(0,idx-1)];
+    switchTo(next.id);
+    save();
+  });
+
+  function renderTable(key, tbodyId){
+    var cur = active();
+    if(!cur) return;
+    var tbody = document.getElementById(tbodyId);
+    tbody.innerHTML = "";
+    cur[key].forEach(function(row, i){
+      var tr = document.createElement("tr");
+      var total = (Number(row.cant)||0)*(Number(row.cu)||0);
+      tr.innerHTML =
+        '<td><input type="text" data-k="'+key+'" data-i="'+i+'" data-f="c" value="'+esc(row.c)+'"></td>'+
+        '<td><input type="number" step="any" min="0" data-k="'+key+'" data-i="'+i+'" data-f="cant" value="'+row.cant+'"></td>'+
+        '<td><input type="number" step="any" min="0" data-k="'+key+'" data-i="'+i+'" data-f="cu" value="'+row.cu+'"></td>'+
+        '<td class="total num" id="total-'+key+'-'+i+'">'+fmtQ(total)+'</td>'+
+        '<td><button class="del-btn" data-del="'+key+'" data-i="'+i+'" type="button" title="Eliminar">&times;</button></td>';
+      tbody.appendChild(tr);
+    });
+  }
+
+  function renderGeneralesTable(){
+    var tbody = document.getElementById("tbl-generales");
+    tbody.innerHTML = "";
+    state.generales.forEach(function(row, i){
+      var tr = document.createElement("tr");
+      var total = (Number(row.cant)||0)*(Number(row.cu)||0);
+      tr.innerHTML =
+        '<td><input type="text" data-gk="generales" data-i="'+i+'" data-f="c" value="'+esc(row.c)+'"></td>'+
+        '<td><input type="number" step="any" min="0" data-gk="generales" data-i="'+i+'" data-f="cant" value="'+row.cant+'"></td>'+
+        '<td><input type="number" step="any" min="0" data-gk="generales" data-i="'+i+'" data-f="cu" value="'+row.cu+'"></td>'+
+        '<td class="total num" id="total-generales-'+i+'">'+fmtQ(total)+'</td>'+
+        '<td><button class="del-btn" data-delgen="generales" data-i="'+i+'" type="button" title="Eliminar">&times;</button></td>';
+      tbody.appendChild(tr);
+    });
+  }
+
+  function renderAllTables(){ 
+    renderTable("inversion","tbl-inversion"); 
+    renderTable("fijos","tbl-fijos"); 
+    renderTable("variables","tbl-variables"); 
+    renderGeneralesTable();
+  }
+
+  function groupTotal(p, key){ return p[key].reduce(function(s,r){ return s+(Number(r.cant)||0)*(Number(r.cu)||0); },0); }
+  function totalGenerales(st){ st = st||state; return st.generales.reduce(function(s,r){ return s+(Number(r.cant)||0)*(Number(r.cu)||0); },0); }
+
+  function fillFormFromActive(){
+    var cur = active();
+    if(!cur) return;
+    document.getElementById("in-empresa").value = state.empresa||"";
+    document.getElementById("in-producto").value = cur.producto||"";
+    document.getElementById("in-ciclo").value = cur.ciclo||"mes";
+    document.getElementById("in-capacidad").value = cur.capacidad||0;
+    document.getElementById("in-precio").value = cur.precio||0;
+    document.getElementById("in-personas").value = cur.personasPorVenta||0;
+    document.getElementById("in-crecimiento").value = cur.crecimiento||0;
+    document.getElementById("in-tipo-crecimiento").value = cur.tipoCrecimiento||"ciclo";
+    document.getElementById("in-ciclosanio").value = cur.ciclosAnio||12;
+  }
+
+  /* RENDER Y LÓGICA DE PESTAÑA AJUSTES */
+  function renderAjustesTab(){
+    var c = state.customColors;
+    document.getElementById("clr-good").value = c.good || "#10b981";
+    document.getElementById("clr-bad").value = c.bad || "#ef4444";
+    document.getElementById("clr-accent").value = c.accent || "#3b82f6";
+    document.getElementById("clr-gold").value = c.gold || "#f59e0b";
+
+    var list = document.getElementById("chartOrderList");
+    list.innerHTML = "";
+    state.chartOrder.forEach(function(id, idx){
+      var item = document.createElement("div");
+      item.className = "order-item";
+      item.innerHTML = '<span>' + (idx+1) + '. ' + chartTitles[id] + '</span>' +
+        '<div class="actions">' +
+          '<button type="button" data-move="up" data-idx="' + idx + '">▲</button>' +
+          '<button type="button" data-move="down" data-idx="' + idx + '">▼</button>' +
+        '</div>';
+      list.appendChild(item);
+    });
+  }
+
+  document.getElementById("clr-good").addEventListener("input", function(e){ state.customColors.good = e.target.value; recalc(); save(); });
+  document.getElementById("clr-bad").addEventListener("input", function(e){ state.customColors.bad = e.target.value; recalc(); save(); });
+  document.getElementById("clr-accent").addEventListener("input", function(e){ state.customColors.accent = e.target.value; recalc(); save(); });
+  document.getElementById("clr-gold").addEventListener("input", function(e){ state.customColors.gold = e.target.value; recalc(); save(); });
+
+  document.getElementById("chartOrderList").addEventListener("click", function(e){
+    var btn = e.target.closest("button");
+    if(!btn) return;
+    var move = btn.getAttribute("data-move");
+    var idx = parseInt(btn.getAttribute("data-idx"), 10);
+
+    if(move === "up" && idx > 0){
+      var temp = state.chartOrder[idx];
+      state.chartOrder[idx] = state.chartOrder[idx-1];
+      state.chartOrder[idx-1] = temp;
+    } else if(move === "down" && idx < state.chartOrder.length - 1){
+      var temp2 = state.chartOrder[idx];
+      state.chartOrder[idx] = state.chartOrder[idx+1];
+      state.chartOrder[idx+1] = temp2;
+    }
+    renderAjustesTab();
+    applyChartOrder();
+    save();
+  });
+
+  function applyChartOrder(){
+    var container = document.getElementById("chartsContainer");
+    state.chartOrder.forEach(function(id){
+      var card = document.getElementById("card-" + id);
+      if(card) container.appendChild(card);
+    });
+  }
+
+  /* MANEJO DE CAMBIOS EN FORMULARIOS Y TABLAS DE ENTRADA (OPTIMIZADO PARA NO PERDER ENFOQUE) */
+  document.getElementById("drawer").addEventListener("input", function(e){
+    var t = e.target;
+    if(t.id === "in-empresa"){ state.empresa = t.value; recalc(); save(); renderCompanies(); return; }
+    
+    var cur = active();
+    if(!cur && t.getAttribute("data-gk")!=="generales") return;
+
+    if(t.id === "in-producto"){ cur.producto = t.value; sortProducts(state); renderSelectors(); recalc(); save(); return; }
+    if(t.id === "in-ciclo"){ cur.ciclo = t.value; recalc(); save(); return; }
+    if(t.id === "in-capacidad"){ cur.capacidad = parseFloat(t.value)||0; recalc(); save(); return; }
+    if(t.id === "in-precio"){ cur.precio = parseFloat(t.value)||0; recalc(); save(); return; }
+    if(t.id === "in-personas"){ cur.personasPorVenta = parseFloat(t.value)||0; recalc(); save(); return; }
+    if(t.id === "in-crecimiento"){ cur.crecimiento = parseFloat(t.value)||0; recalc(); save(); return; }
+    if(t.id === "in-tipo-crecimiento"){ cur.tipoCrecimiento = t.value; recalc(); save(); return; }
+    if(t.id === "in-ciclosanio"){ cur.ciclosAnio = parseInt(t.value,10)||12; recalc(); save(); return; }
+
+    var k = t.getAttribute("data-k");
+    var i = t.getAttribute("data-i");
+    var f = t.getAttribute("data-f");
+    if(k && i!==null && f){
+      cur[k][i][f] = (f==="cant"||f==="cu") ? (parseFloat(t.value)||0) : t.value;
+      
+      // Actualizar solo la celda del total correspondiente sin volver a renderizar la fila completa
+      var rowTotalCell = document.getElementById("total-" + k + "-" + i);
+      if(rowTotalCell){
+        var rowTotal = (Number(cur[k][i].cant)||0) * (Number(cur[k][i].cu)||0);
+        rowTotalCell.textContent = fmtQ(rowTotal);
+      }
+      
+      recalc(); save();
+      return;
+    }
+
+    var gk = t.getAttribute("data-gk");
+    if(gk === "generales" && i!==null && f){
+      state.generales[i][f] = (f==="cant"||f==="cu") ? (parseFloat(t.value)||0) : t.value;
+      
+      // Actualizar solo la celda del total para costos generales
+      var rowTotalCellGen = document.getElementById("total-generales-" + i);
+      if(rowTotalCellGen){
+        var rowTotalGen = (Number(state.generales[i].cant)||0) * (Number(state.generales[i].cu)||0);
+        rowTotalCellGen.textContent = fmtQ(rowTotalGen);
+      }
+      
+      recalc(); save();
+    }
+  });
+
+  document.getElementById("drawer").addEventListener("click", function(e){
+    var btn = e.target.closest("button");
+    if(!btn) return;
+
+    var addKey = btn.getAttribute("data-add");
+    var cur = active();
+    if(addKey && cur){
+      cur[addKey].push({c:"", cant:1, cu:0});
+      renderTable(addKey, "tbl-"+addKey);
+      recalc(); save();
+      return;
+    }
+
+    if(btn.id === "btn-add-general"){
+      state.generales.push({c:"", cant:1, cu:0});
+      renderGeneralesTable();
+      recalc(); save();
+      return;
+    }
+
+    var delKey = btn.getAttribute("data-del");
+    var idx = btn.getAttribute("data-i");
+    if(delKey && idx!==null && cur){
+      cur[delKey].splice(parseInt(idx,10),1);
+      renderTable(delKey, "tbl-"+delKey);
+      recalc(); save();
+      return;
+    }
+
+    var delGenKey = btn.getAttribute("data-delgen");
+    if(delGenKey && idx!==null){
+      state.generales.splice(parseInt(idx,10),1);
+      renderGeneralesTable();
+      recalc(); save();
+    }
+  });
+
+  document.getElementById("btn-guardar").addEventListener("click", function(){ closeDrawer(); recalc(); save(); });
+  document.getElementById("btn-example").addEventListener("click", function(){ state = exampleState(); switchTo(ALL_ID); save(); });
+  document.getElementById("btn-reset").addEventListener("click", function(){
+    if(!confirm("¿Deseas vaciar todos los datos de la empresa?")) return;
+    state = normalizeState({ empresa: state.empresa||"", generales:[], products:[blankProduct("P1")] });
+    switchTo(ALL_ID);
+    save();
+  });
+
+  /* CÁLCULO CORE CON MEZCLA DE VENTAS Y PUNTO DE EQUILIBRIO MULTI-PRODUCTO */
+  function getFinancials(st){
+    st = st||state;
+    sortProducts(st);
+    var totalCap = st.products.reduce(function(s,p){ return s + (Number(p.capacidad)||0); }, 0);
+    var totalGen = totalGenerales(st);
+
+    // 1. Cálculos individuales por producto
+    var prodCalcs = st.products.map(function(p){
+      var cap = Number(p.capacidad)||0;
+      var precio = Number(p.precio)||0;
+      var mixPct = totalCap > 0 ? (cap / totalCap) : (1 / st.products.length);
+      
+      var fijosDirectos = groupTotal(p, "fijos");
+      var varTotales = groupTotal(p, "variables");
+      var invTotal = groupTotal(p, "inversion");
+
+      // Prorrateo de Costos Generales segun mezcla de ventas/capacidad
+      var genAsignado = totalGen * mixPct;
+      var fijosTotales = fijosDirectos + genAsignado;
+
+      var costoVarUnit = cap > 0 ? (varTotales / cap) : 0;
+      var margenContribUnit = precio - costoVarUnit;
+      var margenContribPct = precio > 0 ? (margenContribUnit / precio) : 0;
+
+      var ingresosTotales = precio * cap;
+      var personasPorVenta = Number(p.personasPorVenta)||0;
+      var personasTotal = personasPorVenta * cap;
+      var costoNetoTotal = fijosTotales + varTotales;
+      var utilidadCiclo = ingresosTotales - costoNetoTotal;
+      var utilidadPct = ingresosTotales > 0 ? (utilidadCiclo / ingresosTotales) : 0;
+
+      // Punto de Equilibrio Individual
+      var peUnidadesInd = margenContribUnit > 0 ? (fijosTotales / margenContribUnit) : 0;
+      var peVentasInd = peUnidadesInd * precio;
+
+      return {
+        id: p.id,
+        producto: p.producto || "Sin nombre",
+        cap: cap,
+        precio: precio,
+        mixPct: mixPct,
+        fijosDirectos: fijosDirectos,
+        genAsignado: genAsignado,
+        fijosTotales: fijosTotales,
+        varTotales: varTotales,
+        costoVarUnit: costoVarUnit,
+        margenContribUnit: margenContribUnit,
+        margenContribPct: margenContribPct,
+        ingresosTotales: ingresosTotales,
+        personasPorVenta: personasPorVenta,
+        personasTotal: personasTotal,
+        utilidadPct: utilidadPct,
+        costoNetoTotal: costoNetoTotal,
+        utilidadCiclo: utilidadCiclo,
+        invTotal: invTotal,
+        peUnidadesInd: peUnidadesInd,
+        peVentasInd: peVentasInd,
+        estacion: (function(){ var e = []; for(var k = 0; k < 12; k++){ e.push(Number(p.estacion && p.estacion[k]) || 0); } return e; })(),
+        crecimiento: Number(p.crecimiento)||0,
+        tipoCrecimiento: p.tipoCrecimiento||"ciclo",
+        ciclosAnio: Number(p.ciclosAnio)||12
+      };
+    });
+
+    // 2. Consolidado Multi-Producto (Ponderado por Mezcla)
+    var ingresosConsolidados = prodCalcs.reduce(function(s,c){ return s + c.ingresosTotales; }, 0);
+    var personasConsolidadas = prodCalcs.reduce(function(s,c){ return s + c.personasTotal; }, 0);
+    var varTotalesConsolidadas = prodCalcs.reduce(function(s,c){ return s + c.varTotales; }, 0);
+    var fijosTotalesConsolidados = prodCalcs.reduce(function(s,c){ return s + c.fijosTotales; }, 0);
+    var costoNetoConsolidado = fijosTotalesConsolidados + varTotalesConsolidadas;
+    var utilidadConsolidada = ingresosConsolidados - costoNetoConsolidado;
+    var invConsolidada = prodCalcs.reduce(function(s,c){ return s + c.invTotal; }, 0);
+
+    var precioPromPonderado = prodCalcs.reduce(function(s,c){ return s + (c.precio * c.mixPct); }, 0);
+    var costoVarPromPonderado = prodCalcs.reduce(function(s,c){ return s + (c.costoVarUnit * c.mixPct); }, 0);
+    var margenContribPonderado = precioPromPonderado - costoVarPromPonderado;
+    var margenGlobalPct = ingresosConsolidados > 0 ? (utilidadConsolidada / ingresosConsolidados) : 0;
+
+    // PUNTO DE EQUILIBRIO GLOBAL MULTI-PRODUCTO
+    var peUnidadesGlobal = margenContribPonderado > 0 ? (fijosTotalesConsolidados / margenContribPonderado) : 0;
+    var peVentasGlobal = peUnidadesGlobal * precioPromPonderado;
+
+    // Asignación de Punto de Equilibrio Ponderado a cada producto según su mezcla
+    prodCalcs.forEach(function(c){
+      c.peUnidadesPonderado = peUnidadesGlobal * c.mixPct;
+      c.peVentasPonderado = c.peUnidadesPonderado * c.precio;
+    });
+
+    return {
+      products: prodCalcs,
+      totalCap: totalCap,
+      ingresos: ingresosConsolidados,
+      personas: personasConsolidadas,
+      varTotales: varTotalesConsolidadas,
+      fijosTotales: fijosTotalesConsolidados,
+      generalesTotal: totalGen,
+      costoNeto: costoNetoConsolidado,
+      utilidad: utilidadConsolidada,
+      inversion: invConsolidada,
+      precioPromPonderado: precioPromPonderado,
+      costoVarPromPonderado: costoVarPromPonderado,
+      margenContribPonderado: margenContribPonderado,
+      margenGlobalPct: margenGlobalPct,
+      peUnidadesGlobal: peUnidadesGlobal,
+      peVentasGlobal: peVentasGlobal
+    };
+  }
+
+  function getThemeColors() {
+    var isDark = document.documentElement.getAttribute("data-theme") === "dark";
+    var c = state.customColors || {};
+    return {
+      grid: isDark ? "#262a33" : "#e5e7eb",
+      text: isDark ? "#9ca3af" : "#4b5563",
+      textLight: isDark ? "#f3f4f6" : "#111827",
+      accent: c.accent || (isDark ? "#3b82f6" : "#2563eb"),
+      good: c.good || (isDark ? "#10b981" : "#059669"),
+      bad: c.bad || (isDark ? "#ef4444" : "#dc2626"),
+      gold: c.gold || (isDark ? "#f59e0b" : "#d97706")
+    };
+  }
+
+  function hexToRgba(hex, a){
+    hex = String(hex || "#000000").replace("#","");
+    if(hex.length === 3) hex = hex[0]+hex[0]+hex[1]+hex[1]+hex[2]+hex[2];
+    var n = parseInt(hex, 16);
+    if(!isFinite(n)) n = 0;
+    return "rgba(" + ((n>>16)&255) + "," + ((n>>8)&255) + "," + (n&255) + "," + a + ")";
+  }
+
+  function vGradient(ctx, color, topAlpha, botAlpha){
+    var h = ctx.canvas ? ctx.canvas.clientHeight || ctx.canvas.height : 260;
+    var g = ctx.createLinearGradient(0, 0, 0, h);
+    g.addColorStop(0, hexToRgba(color, topAlpha == null ? 0.42 : topAlpha));
+    g.addColorStop(1, hexToRgba(color, botAlpha == null ? 0.02 : botAlpha));
+    return g;
+  }
+
+  var chartInstances = {};
+  function destroyChart(id){
+    if(chartInstances[id]){
+      chartInstances[id].destroy();
+      chartInstances[id] = null;
+    }
+  }
+  function canvasCtx(containerId){
+    var el = document.getElementById(containerId);
+    if(!el) return null;
+    var canvas = el.querySelector("canvas");
+    if(!canvas){
+      el.innerHTML = "<canvas></canvas>";
+      canvas = el.querySelector("canvas");
+    }
+    return canvas.getContext("2d");
+  }
+  function commonChartOpts(colors){
+    return {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: "index", intersect: false },
+      plugins: {
+        legend: {
+          labels: { color: colors.textLight, boxWidth: 10, boxHeight: 10, font: { size: 11, family: "Inter" } }
+        },
+        tooltip: {
+          backgroundColor: hexToRgba("#111827", 0.92),
+          titleColor: "#fff",
+          bodyColor: "#e5e7eb",
+          borderColor: colors.grid,
+          borderWidth: 1,
+          padding: 10,
+          displayColors: true
+        },
+        datalabels: { display: false }
+      },
+      scales: {
+        x: {
+          grid: { color: hexToRgba(colors.grid, 0.7), drawBorder: false },
+          ticks: { color: colors.text, font: { size: 10, family: "Inter" }, maxRotation: 0 }
+        },
+        y: {
+          grid: { color: hexToRgba(colors.grid, 0.7), drawBorder: false },
+          ticks: { color: colors.text, font: { size: 10, family: "Inter" }, callback: function(v){ return fmtQAbbrev(v); } }
+        }
+      }
+    };
+  }
+
+  function renderSVGBarChart(containerId, items){
+    if(typeof Chart === "undefined") return;
+    var colors = getThemeColors();
+    var ctx = canvasCtx(containerId);
+    if(!ctx) return;
+    destroyChart(containerId);
+    var labels = items.map(function(i){ return i.label; });
+    var data = items.map(function(i){ return i.value; });
+    var barColors = items.map(function(i){ return i.color || (i.value >= 0 ? colors.good : colors.bad); });
+    var gradients = barColors.map(function(c){ return vGradient(ctx, c, 0.95, 0.28); });
+    var opts = commonChartOpts(colors);
+    opts.plugins.legend.display = false;
+    opts.plugins.tooltip.callbacks = {
+      label: function(t){ return " " + fmtQ(t.parsed.y); }
+    };
+    chartInstances[containerId] = new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels: labels,
+        datasets: [{
+          data: data,
+          backgroundColor: gradients,
+          borderColor: barColors,
+          borderWidth: 1,
+          borderRadius: 6,
+          maxBarThickness: 56
+        }]
+      },
+      options: opts
+    });
+  }
+
+  function renderSVGVolumeChart(c) {
+    if(typeof Chart === "undefined") return;
+    var colors = getThemeColors();
+    var ctx = canvasCtx("chartVolumen");
+    if(!ctx) return;
+    destroyChart("chartVolumen");
+
+    var maxQ = Math.max(c.cap * 1.3, (c.peUnidades > 0 ? c.peUnidades * 1.35 : 10), 10);
+    var steps = 24;
+    var labels = [];
+    var costData = [];
+    var revData = [];
+    for(var i = 0; i <= steps; i++){
+      var q = (maxQ / steps) * i;
+      labels.push(q);
+      costData.push(c.fijosTotales + (c.costoVarUnit * q));
+      revData.push(c.precio * q);
+    }
+
+    var opts = commonChartOpts(colors);
+    opts.plugins.tooltip.callbacks = {
+      title: function(items){
+        var q = items && items[0] ? items[0].parsed.x : 0;
+        return fmtNum(q, 0) + " unidades";
+      },
+      label: function(t){ return " " + t.dataset.label + ": " + fmtQ(t.parsed.y); }
+    };
+    opts.scales.x.type = "linear";
+    opts.scales.x.min = 0;
+    opts.scales.x.max = maxQ;
+    opts.scales.x.title = { display: true, text: "Unidades", color: colors.text, font: { size: 10 } };
+    opts.scales.x.ticks.callback = function(v){ return fmtNum(v, 0); };
+    opts.plugins.annotation = {
+      annotations: {
+        pe: c.peUnidades > 0 ? {
+          type: "line",
+          xMin: c.peUnidades,
+          xMax: c.peUnidades,
+          borderColor: colors.gold,
+          borderWidth: 2,
+          borderDash: [6, 4],
+          label: {
+            display: true,
+            content: "PE " + fmtNum(c.peUnidades, 1) + " unid",
+            position: "start",
+            backgroundColor: hexToRgba(colors.gold, 0.92),
+            color: "#111",
+            font: { size: 10, weight: "700" },
+            padding: 4
+          }
+        } : undefined,
+        cap: {
+          type: "line",
+          xMin: c.cap,
+          xMax: c.cap,
+          borderColor: colors.accent,
+          borderWidth: 1.5,
+          borderDash: [3, 3],
+          label: {
+            display: true,
+            content: "Venta " + fmtNum(c.cap, 0),
+            position: "end",
+            backgroundColor: hexToRgba(colors.accent, 0.9),
+            color: "#fff",
+            font: { size: 10, weight: "600" },
+            padding: 4
+          }
+        }
+      }
+    };
+
+    chartInstances.chartVolumen = new Chart(ctx, {
+      type: "line",
+      data: {
+        datasets: [
+          {
+            label: "Costo Total",
+            data: labels.map(function(q, idx){ return { x: q, y: costData[idx] }; }),
+            borderColor: colors.bad,
+            backgroundColor: vGradient(ctx, colors.bad, 0.38, 0.03),
+            fill: "origin",
+            tension: 0.12,
+            pointRadius: 0,
+            pointHoverRadius: 5,
+            borderWidth: 2
+          },
+          {
+            label: "Ingresos Totales",
+            data: labels.map(function(q, idx){ return { x: q, y: revData[idx] }; }),
+            borderColor: colors.accent,
+            backgroundColor: vGradient(ctx, colors.accent, 0.4, 0.03),
+            fill: "origin",
+            tension: 0.12,
+            pointRadius: 0,
+            pointHoverRadius: 5,
+            borderWidth: 2.5
+          },
+          {
+            type: "scatter",
+            label: "Punto de equilibrio",
+            data: c.peUnidades > 0 ? [{ x: c.peUnidades, y: c.peUnidades * c.precio }] : [],
+            backgroundColor: colors.gold,
+            borderColor: "#ffffff",
+            borderWidth: 3,
+            pointRadius: 9,
+            pointHoverRadius: 12,
+            order: -1,
+            datalabels: {
+              display: true,
+              anchor: "end",
+              align: "top",
+              offset: 8,
+              clip: false,
+              backgroundColor: colors.gold,
+              color: "#111111",
+              borderRadius: 4,
+              padding: 5,
+              font: { size: 10, weight: "700", family: "Inter" },
+              formatter: function(v){ return ["Equilibrio: " + fmtNum(v.x, 0) + " unid", fmtQ(v.y)]; }
+            }
+          }
+        ]
+      },
+      options: opts
+    });
+  }
+
+  function renderSVGProjection(c, filterKey){
+    if(typeof Chart === "undefined") return;
+    var colors = getThemeColors();
+    var ctx = canvasCtx("chartProyeccion");
+    if(!ctx) return;
+    destroyChart("chartProyeccion");
+
+    var isYears = String(filterKey).charAt(0) === "y";
+    var n = parseInt(String(filterKey).replace(/[^\d]/g, ""), 10) || 12;
+    var perYear = Math.max(1, Math.round(c.ciclosAnio || 12));
+    var limit = isYears ? n * perYear : n;
+    var gPct = c.crecimiento || 0;
+    var gPerCycle = (c.tipoCrecimiento === "ciclo") ? (gPct / 100) : (Math.pow(1 + (gPct / 100), 1 / perYear) - 1);
+
+    var labels = [];
+    var accData = [];
+    var acc = 0;
+    labels.push(isYears ? "Inicio" : "M0");
+    accData.push(0);
+    for(var m=1; m<=limit; m++){
+      var factor = Math.pow(1 + gPerCycle, m - 1);
+      var capM = c.cap * factor;
+      var revM = c.precio * capM;
+      var costM = c.fijosTotales + (c.costoVarUnit * capM);
+      acc += (revM - costM);
+      if(!isYears){
+        labels.push("M"+m);
+        accData.push(acc);
+      } else if(m % perYear === 0){
+        labels.push("Año " + (m / perYear));
+        accData.push(acc);
+      }
+    }
+
+    var opts = commonChartOpts(colors);
+    opts.plugins.tooltip.callbacks = {
+      label: function(t){ return " Acumulado: " + fmtQ(t.parsed.y); }
+    };
+    opts.plugins.annotation = {
+      annotations: c.invTotal > 0 ? {
+        inv: {
+          type: "line",
+          yMin: c.invTotal,
+          yMax: c.invTotal,
+          borderColor: colors.gold,
+          borderWidth: 2,
+          borderDash: [6, 4],
+          label: {
+            display: true,
+            content: "Inversión " + fmtQAbbrev(c.invTotal),
+            position: "end",
+            backgroundColor: hexToRgba(colors.gold, 0.92),
+            color: "#111",
+            font: { size: 10, weight: "700" },
+            padding: 4
+          }
+        }
+      } : {}
+    };
+
+    chartInstances.chartProyeccion = new Chart(ctx, {
+      type: "line",
+      data: {
+        labels: labels,
+        datasets: [{
+          label: "Flujo acumulado",
+          data: accData,
+          borderColor: colors.good,
+          backgroundColor: vGradient(ctx, colors.good, 0.45, 0.03),
+          fill: true,
+          tension: 0.28,
+          pointRadius: 2,
+          pointHoverRadius: 6,
+          pointBackgroundColor: colors.good,
+          borderWidth: 2.5
+        }]
+      },
+      options: opts
+    });
+  }
+
+  function renderHBarList(containerId, items){
+    if(typeof Chart === "undefined") return;
+    var colors = getThemeColors();
+    var wrap = document.getElementById(containerId);
+    if(wrap){
+      wrap.style.height = Math.max(180, items.length * 42 + 40) + "px";
+    }
+    var ctx = canvasCtx(containerId);
+    if(!ctx) return;
+    destroyChart(containerId);
+    var labels = items.map(function(i){ return i.label; });
+    var data = items.map(function(i){ return i.value; });
+    var barColors = items.map(function(i){ return i.value >= 0 ? colors.good : colors.bad; });
+    var gradients = barColors.map(function(c){
+      var w = ctx.canvas ? ctx.canvas.clientWidth || 400 : 400;
+      var g = ctx.createLinearGradient(0, 0, w, 0);
+      g.addColorStop(0, hexToRgba(c, 0.25));
+      g.addColorStop(1, hexToRgba(c, 0.92));
+      return g;
+    });
+    var opts = commonChartOpts(colors);
+    opts.indexAxis = "y";
+    opts.plugins.legend.display = false;
+    opts.layout = { padding: { right: 72 } };
+    opts.plugins.tooltip.callbacks = {
+      label: function(t){ return " " + fmtQ(t.parsed.x); }
+    };
+    opts.plugins.datalabels = {
+      display: true,
+      anchor: "end",
+      align: "end",
+      clamp: true,
+      color: colors.textLight,
+      font: { family: "Inter", size: 11, weight: "700" },
+      formatter: function(v){ return fmtQ(v); }
+    };
+    opts.scales.x.ticks.callback = function(v){ return fmtQAbbrev(v); };
+    opts.scales.y.ticks = {
+      color: colors.textLight,
+      font: { size: 12, family: "Inter", weight: "600" },
+      autoSkip: false,
+      callback: function(value){
+        var lbl = this.getLabelForValue ? this.getLabelForValue(value) : labels[value];
+        return lbl || "";
+      }
+    };
+    chartInstances[containerId] = new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels: labels,
+        datasets: [{
+          data: data,
+          backgroundColor: gradients,
+          borderColor: barColors,
+          borderWidth: 1,
+          borderRadius: 6,
+          maxBarThickness: 22
+        }]
+      },
+      options: opts
+    });
+  }
+
+  /* ESTACIONALIDAD: 12 ciclos, cada uno con su % de aumento (o baja) de ventas */
+  function ensureEst(p){
+    if(!Array.isArray(p.estacion)) p.estacion = [];
+    for(var i = 0; i < SEASON_N; i++){ p.estacion[i] = Number(p.estacion[i]) || 0; }
+    p.estacion.length = SEASON_N;
+    return p.estacion;
+  }
+  function seasonTargets(){
+    if(state.activeId === ALL_ID) return state.products;
+    var a = active();
+    return a ? [a] : [];
+  }
+  function buildSeasonInputs(){
+    var box = document.getElementById("seasonInputs");
+    if(!box || box.children.length) return;
+    var html = "";
+    for(var i = 0; i < SEASON_N; i++){
+      html += '<label class="season-cell"><span>Ciclo ' + (i + 1) + '</span>' +
+        '<div class="season-input"><input type="number" step="5" min="-100" data-season="' + i + '" placeholder="0"><em>%</em></div></label>';
+    }
+    box.innerHTML = html;
+  }
+  function syncSeasonInputs(){
+    buildSeasonInputs();
+    var targets = seasonTargets();
+    var box = document.getElementById("seasonInputs");
+    if(!box) return;
+    Array.prototype.forEach.call(box.querySelectorAll("input"), function(inp){
+      if(document.activeElement === inp) return;
+      var i = parseInt(inp.getAttribute("data-season"), 10);
+      var vals = targets.map(function(p){ return ensureEst(p)[i]; });
+      var same = vals.every(function(v){ return v === vals[0]; });
+      inp.value = (same && vals.length) ? String(vals[0]) : "";
+      inp.placeholder = same ? "0" : "varía";
+    });
+  }
+
+  document.getElementById("seasonInputs").addEventListener("input", function(e){
+    var t = e.target;
+    var i = parseInt(t.getAttribute("data-season"), 10);
+    if(isNaN(i)) return;
+    var v = parseFloat(t.value);
+    if(!isFinite(v)) v = 0;
+    if(v < -100) v = -100;
+    seasonTargets().forEach(function(p){ ensureEst(p)[i] = v; });
+    save();
+    renderSeasonality(getFinancials());
+  });
+  document.getElementById("btnSeasonReset").addEventListener("click", function(){
+    seasonTargets().forEach(function(p){ p.estacion = []; ensureEst(p); });
+    save();
+    renderSeasonality(getFinancials());
+  });
+
+  function renderSeasonality(fin){
+    syncSeasonInputs();
+    var isAll = (state.activeId === ALL_ID);
+    var list = isAll ? fin.products : fin.products.filter(function(x){ return x.id === state.activeId; });
+    if(!list.length) list = fin.products.slice(0, 1);
+    if(!list.length) return;
+
+    var labels = [], rev = [], cost = [], util = [], units = [], pcts = [];
+    var baseUnits = list.reduce(function(s, c){ return s + c.cap; }, 0);
+    for(var i = 0; i < SEASON_N; i++){
+      var R = 0, C = 0, U = 0;
+      list.forEach(function(c){
+        var f = Math.max(0, 1 + (c.estacion[i] || 0) / 100);
+        var u = c.cap * f;
+        R += c.precio * u;
+        C += c.fijosTotales + c.costoVarUnit * u;
+        U += u;
+      });
+      labels.push("Ciclo " + (i + 1));
+      rev.push(R); cost.push(C); util.push(R - C); units.push(U);
+      pcts.push(baseUnits > 0 ? (U / baseUnits - 1) * 100 : 0);
+    }
+
+    var totRev = rev.reduce(function(a, b){ return a + b; }, 0);
+    var totCost = cost.reduce(function(a, b){ return a + b; }, 0);
+    var totUtil = totRev - totCost;
+    var lossCycles = util.filter(function(v){ return v < 0; }).length;
+    var best = 0;
+    util.forEach(function(v, i){ if(v > util[best]) best = i; });
+
+    var kp = document.getElementById("seasonKpis");
+    if(kp){
+      kp.innerHTML =
+        '<div class="kpi"><div class="label">Ingresos (12 ciclos)</div><div class="value num">' + fmtQ(totRev) + '</div><div class="sub">según % de cada ciclo</div></div>' +
+        '<div class="kpi"><div class="label">Costos (12 ciclos)</div><div class="value num">' + fmtQ(totCost) + '</div><div class="sub">fijos + variables</div></div>' +
+        '<div class="kpi"><div class="label">Utilidad (12 ciclos)</div><div class="value num ' + (totUtil >= 0 ? "good" : "bad") + '">' + fmtQ(totUtil) + '</div><div class="sub">acumulada</div></div>' +
+        '<div class="kpi"><div class="label">Ciclos con pérdida</div><div class="value num ' + (lossCycles ? "bad" : "good") + '">' + lossCycles + ' de 12</div><div class="sub">mejor: Ciclo ' + (best + 1) + ' (' + fmtQAbbrev(util[best]) + ')</div></div>';
+    }
+    var note = document.getElementById("noteEstacionalidad");
+    if(note){
+      note.textContent = "Cada casilla es el % de aumento (o baja) de ventas de ese ciclo frente a la venta base de " + fmtNum(baseUnits, 0) +
+        " unid. 100% = el doble de ventas; puedes poner más de 100%. Los costos fijos no cambian y los variables suben con las unidades. " +
+        (isAll ? "Vista de toda la empresa: lo que escribas aplica a todos los productos." : "Solo afecta a este producto.");
+    }
+
+    if(typeof Chart === "undefined") return;
+    var colors = getThemeColors();
+    var ctx = canvasCtx("chartEstacionalidad");
+    if(!ctx) return;
+    destroyChart("chartEstacionalidad");
+    var barColors = util.map(function(v){ return v >= 0 ? colors.good : colors.bad; });
+    var opts = commonChartOpts(colors);
+    opts.plugins.tooltip.callbacks = {
+      label: function(t){ return " " + t.dataset.label + ": " + fmtQ(t.parsed.y); },
+      afterBody: function(items){
+        var k = items && items[0] ? items[0].dataIndex : 0;
+        return ["Unidades: " + fmtNum(units[k], 0) + " (" + (pcts[k] >= 0 ? "+" : "") + fmtNum(pcts[k], 0) + "% vs base)"];
+      }
+    };
+    chartInstances.chartEstacionalidad = new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels: labels,
+        datasets: [
+          { type: "bar", label: "Utilidad", data: util,
+            backgroundColor: barColors.map(function(c){ return hexToRgba(c, 0.75); }),
+            borderColor: barColors, borderWidth: 1, borderRadius: 5, maxBarThickness: 36, order: 2 },
+          { type: "line", label: "Ingresos", data: rev, borderColor: colors.accent, backgroundColor: colors.accent,
+            tension: 0.2, pointRadius: 3, pointHoverRadius: 6, borderWidth: 2.5, order: 1 },
+          { type: "line", label: "Costo total", data: cost, borderColor: colors.bad, backgroundColor: colors.bad,
+            borderDash: [6, 4], tension: 0.2, pointRadius: 2, pointHoverRadius: 5, borderWidth: 2, order: 1 }
+        ]
+      },
+      options: opts
+    });
+  }
+
+  /* RENDERING GENERAL DEL DASHBOARD */
+  function recalc(){
+    var fin = getFinancials();
+    var isAll = (state.activeId === ALL_ID);
+    var pActive = active();
+    var colors = getThemeColors();
+
+    applyChartOrder();
+
+    // Actualizar Totales del Formulario
+    if (pActive) {
+      document.getElementById("sum-fijos").textContent = fmtQ(groupTotal(pActive, "fijos"));
+      document.getElementById("sum-variables").textContent = fmtQ(groupTotal(pActive, "variables"));
+      document.getElementById("sum-inversion").textContent = fmtQ(groupTotal(pActive, "inversion"));
+    }
+    document.getElementById("sum-generales").textContent = fmtQ(totalGenerales());
+
+    // 1. Datos del Header y Resumen Empresa
+    document.getElementById("hEmpresa").textContent = state.empresa || "Sin nombre";
+    document.getElementById("co-count").textContent = fin.products.length;
+    document.getElementById("co-generales").textContent = fmtQ(fin.generalesTotal);
+    document.getElementById("co-inversion").textContent = fmtQ(fin.inversion);
+    document.getElementById("co-ingresos").textContent = fmtQ(fin.ingresos);
+    
+    var coUtil = document.getElementById("co-utilidad");
+    coUtil.textContent = fmtQ(fin.utilidad);
+    coUtil.className = "value num " + (fin.utilidad >= 0 ? "good" : "bad");
+
+    var coMargen = document.getElementById("co-margen");
+    coMargen.textContent = fmtNum(fin.margenGlobalPct * 100, 1) + "%";
+    coMargen.className = "value num " + (fin.margenGlobalPct >= 0 ? "good" : "bad");
+
+    // 2. Llenar Tabla Maestra de Punto de Equilibrio
+    var tbody = document.getElementById("tbl-break-even-body");
+    var tfoot = document.getElementById("tbl-break-even-foot");
+    tbody.innerHTML = "";
+
+    fin.products.forEach(function(item){
+      var tr = document.createElement("tr");
+      if(pActive && pActive.id === item.id) tr.className = "highlight-row";
+
+      tr.innerHTML = 
+        '<td>'+esc(item.producto)+'</td>'+
+        '<td>'+fmtNum(item.cap, 0)+'</td>'+
+        '<td>'+fmtNum(item.personasTotal, 0)+'</td>'+
+        '<td>'+fmtNum(fin.fijosTotales > 0 ? (item.fijosTotales / fin.fijosTotales) * 100 : 0, 1)+'%</td>'+
+        '<td>'+fmtQ(item.fijosTotales)+'</td>'+
+        '<td>'+fmtQ(item.ingresosTotales)+'</td>'+
+        '<td>'+fmtQ(item.varTotales)+'</td>'+
+        '<td class="good">'+fmtQ(item.margenContribUnit * item.cap)+'</td>'+
+        '<td class="'+(item.utilidadPct>=0?'good':'bad')+'">'+fmtNum(item.utilidadPct * 100, 1)+'%</td>'+
+        '<td class="'+(item.utilidadCiclo>=0?'good':'bad')+'">'+fmtQ(item.utilidadCiclo)+'</td>'+
+        '<td style="color:var(--gold); font-weight:700;">'+fmtNum(item.peUnidadesPonderado, 1)+' unid</td>'+
+        '<td style="color:var(--gold); font-weight:700;">'+fmtQ(item.peVentasPonderado)+'</td>';
+      tbody.appendChild(tr);
+    });
+
+    tfoot.innerHTML = 
+      '<tr>'+
+        '<td>CONSOLIDADO EMPRESA</td>'+
+        '<td>'+fmtNum(fin.totalCap, 0)+'</td>'+
+        '<td>'+fmtNum(fin.personas, 0)+'</td>'+
+        '<td>100%</td>'+
+        '<td>'+fmtQ(fin.fijosTotales)+'</td>'+
+        '<td>'+fmtQ(fin.ingresos)+'</td>'+
+        '<td>'+fmtQ(fin.varTotales)+'</td>'+
+        '<td class="good">'+fmtQ(fin.ingresos - fin.varTotales)+'</td>'+
+        '<td class="'+(fin.margenGlobalPct>=0?'good':'bad')+'">'+fmtNum(fin.margenGlobalPct * 100, 1)+'%</td>'+
+        '<td class="'+(fin.utilidad>=0?'good':'bad')+'">'+fmtQ(fin.utilidad)+'</td>'+
+        '<td style="color:var(--gold); font-weight:700;">'+fmtNum(fin.peUnidadesGlobal, 1)+' unid</td>'+
+        '<td style="color:var(--gold); font-weight:700;">'+fmtQ(fin.peVentasGlobal)+'</td>'+
+      '</tr>';
+
+    document.getElementById("pe-global-badge").textContent = "Punto Equilibrio Global: " + fmtNum(fin.peUnidadesGlobal, 0) + " Unidades (" + fmtQ(fin.peVentasGlobal) + ")";
+
+    // 3. Determinar Vista Específica (Consolidado o Producto Individual)
+    var activeData = {};
+    if(isAll){
+      document.getElementById("hProducto").textContent = "Vista Consolidada Empresa";
+      document.getElementById("dashProductName").textContent = "TODOS LOS PRODUCTOS (GLOBAL)";
+      document.getElementById("hCap").textContent = fmtNum(fin.totalCap, 0);
+      document.getElementById("hPrecio").textContent = fmtQ(fin.ingresos);
+
+      activeData = {
+        cap: fin.totalCap,
+        precio: fin.precioPromPonderado,
+        fijosTotales: fin.fijosTotales,
+        varTotales: fin.varTotales,
+        costoNetoTotal: fin.costoNeto,
+        costoVarUnit: fin.costoVarPromPonderado,
+        margenContribUnit: fin.margenContribPonderado,
+        utilidad: fin.utilidad,
+        peUnidades: fin.peUnidadesGlobal,
+        peVentas: fin.peVentasGlobal,
+        invTotal: fin.inversion,
+        crecimiento: fin.products[0] ? fin.products[0].crecimiento : 0,
+        tipoCrecimiento: "ciclo",
+        ciclosAnio: 12
+      };
+    } else {
+      var prod = fin.products.find(function(x){ return x.id === state.activeId; }) || fin.products[0];
+      document.getElementById("hProducto").textContent = prod.producto;
+      document.getElementById("dashProductName").textContent = prod.producto;
+      document.getElementById("hCap").textContent = fmtNum(prod.cap, 0);
+      document.getElementById("hPrecio").textContent = fmtQ(prod.ingresosTotales);
+
+      activeData = {
+        cap: prod.cap,
+        precio: prod.precio,
+        fijosTotales: prod.fijosTotales,
+        varTotales: prod.varTotales,
+        costoNetoTotal: prod.costoNetoTotal,
+        costoVarUnit: prod.costoVarUnit,
+        margenContribUnit: prod.margenContribUnit,
+        utilidad: prod.utilidadCiclo,
+        peUnidades: prod.peUnidadesPonderado,
+        peVentas: prod.peVentasPonderado,
+        invTotal: prod.invTotal,
+        crecimiento: prod.crecimiento,
+        tipoCrecimiento: prod.tipoCrecimiento,
+        ciclosAnio: prod.ciclosAnio
+      };
+    }
+
+    // 4. Actualizar Banner Diagnóstico
+    var banner = document.getElementById("banner");
+    var bannerText = document.getElementById("bannerText");
+    if(activeData.utilidad >= 0){
+      banner.className = "decision-banner good";
+      bannerText.innerHTML = "<b>¡Operación Rentable!</b> Tu nivel de venta proyectado (" + fmtNum(activeData.cap, 0) + " unid) supera las <b>" + fmtNum(activeData.peUnidades, 0) + " unidades requeridas para alcanzar el punto de equilibrio</b>.";
+    } else {
+      banner.className = "decision-banner bad";
+      bannerText.innerHTML = "<b>Atención - Riesgo de Pérdida:</b> Las ventas actuales (" + fmtNum(activeData.cap, 0) + " unid) no cubren los costos. Requieres vender al menos <b>" + fmtNum(activeData.peUnidades, 0) + " unidades (" + fmtQ(activeData.peVentas) + ")</b> para estar en equilibrio.";
+    }
+
+    // 5. Actualizar KPIs Inferiores
+    document.getElementById("kpi-costoNeto").textContent = fmtQ(activeData.costoNetoTotal);
+    document.getElementById("kpi-costoNetoSub").textContent = "fijos " + fmtQ(activeData.fijosTotales) + " + var. " + fmtQ(activeData.varTotales);
+    
+    document.getElementById("kpi-costoUnidad").textContent = activeData.cap > 0 ? fmtQ(activeData.costoNetoTotal / activeData.cap) : "Q0.00";
+    
+    var kpiPE = document.getElementById("kpi-pe");
+    kpiPE.textContent = fmtNum(activeData.peUnidades, 1) + " unid";
+    document.getElementById("kpi-peSub").textContent = "equivalente a " + fmtQ(activeData.peVentas);
+
+    var kpiUtil = document.getElementById("kpi-utilidad");
+    kpiUtil.textContent = fmtQ(activeData.utilidad);
+    kpiUtil.className = "value num " + (activeData.utilidad >= 0 ? "good" : "bad");
+
+    var kpiRent = document.getElementById("kpi-rent");
+    kpiRent.textContent = fmtQ(activeData.margenContribUnit * activeData.cap);
+    
+    var kpiTiempo = document.getElementById("kpi-tiempo");
+    if(activeData.utilidad > 0 && activeData.invTotal > 0){
+      kpiTiempo.textContent = fmtNum(activeData.invTotal / activeData.utilidad, 1) + " ciclos";
+    } else {
+      kpiTiempo.textContent = "N/A";
+    }
+
+    var hintVenta = document.getElementById("hint-venta-total");
+    var hintPers = document.getElementById("hint-personas-total");
+    if(hintVenta){
+      var capH = pActive ? (Number(pActive.capacidad)||0) : fin.totalCap;
+      var preH = pActive ? (Number(pActive.precio)||0) : 0;
+      hintVenta.textContent = "Venta total del ciclo: " + fmtQ((pActive ? capH * preH : fin.ingresos)) + (pActive ? " (" + fmtNum(capH,0) + " × " + fmtQ(preH) + ")" : "");
+    }
+    if(hintPers && pActive){
+      var pp = Number(pActive.personasPorVenta)||0;
+      var capP = Number(pActive.capacidad)||0;
+      hintPers.textContent = pp > 0
+        ? "Total personas / clientes: " + fmtNum(pp * capP, 0) + " (" + fmtNum(pp,0) + " × " + fmtNum(capP,0) + " ventas)"
+        : "Por defecto 0. Si pones 4 o 5, se multiplica por las ventas.";
+    }
+
+    // 6. Renders de Gráficos
+    var compItems = fin.products.map(function(x){ return { label: x.producto, value: x.utilidadCiclo }; });
+    renderHBarList("chartComparativo", compItems);
+
+    var structItems = [
+      { label: "Costos Var.", value: activeData.varTotales, color: colors.accent },
+      { label: "Costos Fijos", value: activeData.fijosTotales, color: colors.gold }
+    ];
+    renderSVGBarChart("chartComposicion", structItems);
+
+    renderSVGVolumeChart(activeData);
+
+    var filterKey = document.getElementById("selectProyAños").value || "m12";
+    renderSVGProjection(activeData, filterKey);
+    renderSeasonality(fin);
+  }
+
+  document.getElementById("selectProyAños").addEventListener("change", recalc);
+
+  /* ===== MULTI-EMPRESA, IMPORTACIÓN Y EXPORTACIÓN (EXCEL / JSON) ===== */
+  function copyState(s){ return JSON.parse(JSON.stringify(s)); }
+  function normName(s){ return String(s==null?"":s).trim().toLowerCase(); }
+  function setIoNote(msg){ var n = document.getElementById("ioNote"); if(n) n.textContent = msg || ""; }
+
+  function normalizeState(s){
+    if(!s.generales) s.generales = [];
+    if(!s.products || !s.products.length){ s.products = [blankProduct("")]; }
+    s.products.forEach(function(p){
+      if(!p.id) p.id = uid();
+      if(p.personasPorVenta==null) p.personasPorVenta = 0;
+      ["inversion","fijos","variables"].forEach(function(k){ if(!p[k]) p[k] = []; });
+      ensureEst(p);
+    });
+    if(!s.customColors) s.customColors = { good:"#10b981", bad:"#ef4444", accent:"#3b82f6", gold:"#f59e0b" };
+    if(!s.chartOrder) s.chartOrder = ["chartComparativo","chartComposicion","chartProyeccion","chartEstacionalidad"];
+    s.chartOrder = s.chartOrder.filter(function(id){ return id !== "chartVolumen"; });
+    if(s.chartOrder.indexOf("chartEstacionalidad") < 0) s.chartOrder.push("chartEstacionalidad");
+    if(!s.chartOrder.length) s.chartOrder = ["chartComparativo","chartComposicion","chartProyeccion","chartEstacionalidad"];
+    sortProducts(s);
+    s.activeId = ALL_ID;
+    return s;
+  }
+
+  /* ---------- Empresas ---------- */
+  function companyState(id){ return id === activeCompanyId ? state : companies[id]; }
+  function companyLabel(id){ var s = companyState(id); return ((s && s.empresa) || "").trim(); }
+  function companyIds(){ return Object.keys(companies); }
+  function findCompanyByName(name){
+    var n = normName(name);
+    if(!n) return undefined;
+    return companyIds().find(function(id){ return normName(companyLabel(id)) === n; });
+  }
+  function uniqueName(base, reserved){
+    var name = base, i = 2;
+    while(findCompanyByName(name) !== undefined || (reserved||[]).some(function(r){ return normName(r) === normName(name); })){
+      name = base + " (" + i + ")"; i++;
+    }
+    return name;
+  }
+  function productsSub(s){ var n = (s.products||[]).length; return n + (n === 1 ? " producto" : " productos"); }
+
+  function renderCompanySelect(){
+    var sel = document.getElementById("companySelect");
+    if(!sel) return;
+    sel.innerHTML = "";
+    companyIds().forEach(function(id){
+      var o = document.createElement("option");
+      o.value = id; o.textContent = companyLabel(id) || "Sin nombre";
+      if(id === activeCompanyId) o.selected = true;
+      sel.appendChild(o);
+    });
+  }
+  function renderCompanyList(){
+    var sel = document.getElementById("libSelect");
+    var title = document.getElementById("companyCount");
+    if(title) title.textContent = companyIds().length;
+    if(!sel) return;
+    var prev = sel.value;
+    sel.innerHTML = "";
+    companyIds().forEach(function(id){
+      var o = document.createElement("option");
+      o.value = id;
+      o.textContent = (companyLabel(id) || "Sin nombre") + (id === activeCompanyId ? "  (activa)" : "") + "  ·  " + productsSub(companyState(id));
+      sel.appendChild(o);
+    });
+    if(prev && companies[prev]) sel.value = prev;
+  }
+  function renderCompanies(){ renderCompanySelect(); renderCompanyList(); }
+
+  function switchCompany(id){
+    if(!companies[id]) return;
+    if(id === activeCompanyId){ renderCompanies(); return; }
+    save();
+    activeCompanyId = id;
+    state = normalizeState(companies[id]);
+    save();
+    switchTo(ALL_ID);
+    renderCompanies();
+  }
+
+  document.getElementById("companySelect").addEventListener("change", function(e){ switchCompany(e.target.value); });
+
+  /* Electron no soporta window.prompt(): usamos un diálogo propio que devuelve una promesa. */
+  function askText(o){
+    return new Promise(function(resolve){
+      var ov = document.createElement("div");
+      ov.className = "modal-overlay";
+      ov.innerHTML = '<div class="modal-box"><h3>' + esc(o.title || "") + '</h3>' +
+        (o.text ? '<p>' + esc(o.text) + '</p>' : '') +
+        '<input type="text" class="modal-text" id="mTxt" autocomplete="off" spellcheck="false">' +
+        '<div class="modal-actions"><button type="button" id="mCancel" class="io-btn">Cancelar</button>' +
+        '<button type="button" id="mOk" class="io-btn modal-ok">' + esc(o.okText || "Aceptar") + '</button></div></div>';
+      document.body.appendChild(ov);
+      var input = ov.querySelector("#mTxt");
+      input.value = (o.value == null) ? "" : String(o.value);
+      var closed = false;
+      function finish(v){
+        if(closed) return;
+        closed = true;
+        document.removeEventListener("keydown", onKey, true);
+        if(ov.parentNode) ov.parentNode.removeChild(ov);
+        resolve(v);
+      }
+      function accept(){ finish(input.value); }
+      function onKey(e){
+        if(e.key === "Escape"){ e.stopPropagation(); e.preventDefault(); finish(null); }
+        else if(e.key === "Enter"){ e.preventDefault(); accept(); }
+      }
+      document.addEventListener("keydown", onKey, true);
+      ov.querySelector("#mCancel").addEventListener("click", function(){ finish(null); });
+      ov.querySelector("#mOk").addEventListener("click", accept);
+      setTimeout(function(){ input.focus(); input.select(); }, 30);
+    });
+  }
+
+  document.getElementById("btnNewCompany").addEventListener("click", async function(){
+    var suggested = uniqueName("Nueva empresa");
+    var name;
+    while(true){
+      name = await askText({
+        title: "Nueva empresa",
+        text: "Escribe el nombre de la nueva empresa. Se creará vacía y podrás agregarle sus productos y costos.",
+        value: suggested,
+        okText: "Crear empresa"
+      });
+      if(name === null) return;
+      name = name.trim();
+      if(!name){ alert("Escribe un nombre."); continue; }
+      if(findCompanyByName(name) !== undefined){ alert('Ya existe una empresa llamada "' + name + '". Elige otro nombre.'); suggested = name; continue; }
+      break;
+    }
+    save();
+    var id = cid();
+    companies[id] = normalizeState({ empresa: name, generales: [], products: [blankProduct("")] });
+    activeCompanyId = id;
+    state = companies[id];
+    save();
+    switchTo(ALL_ID);
+    renderCompanies();
+  });
+
+  document.getElementById("btn-lib-load").addEventListener("click", function(){
+    var id = document.getElementById("libSelect").value;
+    if(!id) return;
+    switchCompany(id);
+    closeDrawer();
+    setIoNote('Ahora estás viendo "' + (companyLabel(id) || "Sin nombre") + '".');
+  });
+
+  document.getElementById("btn-lib-del").addEventListener("click", function(){
+    var id = document.getElementById("libSelect").value;
+    if(!id) return;
+    if(companyIds().length <= 1){ alert("Debe quedar al menos una empresa."); return; }
+    var label = companyLabel(id) || "Sin nombre";
+    if(!confirm('¿Eliminar definitivamente la empresa "' + label + '" con todos sus productos?')) return;
+    if(id === activeCompanyId){
+      var next = companyIds().find(function(x){ return x !== id; });
+      delete companies[id];
+      activeCompanyId = next;
+      state = normalizeState(companies[next]);
+      save();
+      switchTo(ALL_ID);
+    } else {
+      delete companies[id];
+      save();
+    }
+    renderCompanies();
+    setIoNote('Se eliminó "' + label + '".');
+  });
+
+  /* ---------- Ventana para elegir empresas (exportar / importar) ---------- */
+  function pickModal(o){
+    return new Promise(function(resolve){
+      var ov = document.createElement("div");
+      ov.className = "modal-overlay";
+      var html = '<div class="modal-box"><h3>' + esc(o.title) + '</h3><p>' + esc(o.text || "") + '</p>' +
+        '<label class="modal-all"><input type="checkbox" id="mAll" checked> Seleccionar todas</label><div class="modal-list">';
+      o.items.forEach(function(it){
+        html += '<label class="modal-item"><input type="checkbox" class="mChk" value="' + esc(it.id) + '" checked>' +
+          '<span><b>' + esc(it.label) + '</b><small>' + esc(it.sub || "") + '</small></span></label>';
+      });
+      html += '</div><div class="modal-actions"><button type="button" id="mCancel" class="io-btn">Cancelar</button>' +
+        '<button type="button" id="mOk" class="io-btn modal-ok">' + esc(o.okText || "Aceptar") + '</button></div></div>';
+      ov.innerHTML = html;
+      document.body.appendChild(ov);
+      var chks = ov.querySelectorAll(".mChk");
+      var all = ov.querySelector("#mAll");
+      function onKey(e){ if(e.key === "Escape") close(null); }
+      function close(v){ document.removeEventListener("keydown", onKey); document.body.removeChild(ov); resolve(v); }
+      document.addEventListener("keydown", onKey);
+      all.addEventListener("change", function(){ Array.prototype.forEach.call(chks, function(c){ c.checked = all.checked; }); });
+      ov.querySelector("#mCancel").addEventListener("click", function(){ close(null); });
+      ov.querySelector("#mOk").addEventListener("click", function(){
+        var sel = [];
+        Array.prototype.forEach.call(chks, function(c){ if(c.checked) sel.push(c.value); });
+        if(!sel.length){ alert("Marca al menos una empresa."); return; }
+        close(sel);
+      });
+    });
+  }
+
+  /* Devuelve (en promesa) la lista de estados a exportar; pregunta cuántas si hay más de una. */
+  function chooseCompaniesToExport(kind){
+    save();
+    var ids = companyIds();
+    if(ids.length <= 1) return Promise.resolve(ids.map(function(id){ return copyState(companies[id]); }));
+    return pickModal({
+      title: "¿Cuántas empresas quieres exportar?",
+      text: "Tienes " + ids.length + " empresas. Marca las que irán dentro del archivo " + kind + ".",
+      items: ids.map(function(id){ return { id: id, label: (companyLabel(id) || "Sin nombre") + (id === activeCompanyId ? " (activa)" : ""), sub: productsSub(companies[id]) }; }),
+      okText: "Exportar"
+    }).then(function(sel){
+      if(!sel) return null;
+      return ids.filter(function(id){ return sel.indexOf(id) >= 0; }).map(function(id){ return copyState(companies[id]); });
+    });
+  }
+
+  function uniqueLabels(list){
+    var used = {};
+    return list.map(function(s, i){
+      var base = (s.empresa || "").trim() || ("Empresa " + (i + 1));
+      var n = base, k = 2;
+      while(used[normName(n)]){ n = base + " (" + k + ")"; k++; }
+      used[normName(n)] = 1;
+      return n;
+    });
+  }
+  function fileBase(list, labels){ return list.length === 1 ? labels[0] : ("empresas_" + list.length); }
+
+  /* ---------- Importar: nombres y reemplazos ---------- */
+  async function askCompanyName(importedName, idx, total, reserved){
+    var base = (importedName || "").trim() || "Empresa importada";
+    var suggestion = uniqueName(base.replace(/\s*\(\d+\)$/, ""), reserved);
+    while(true){
+      var head = total > 1 ? ("Empresa " + (idx + 1) + " de " + total + "\n") : "";
+      var input = await askText({
+        title: "Nombre de la empresa importada",
+        text: head + "¿Con qué nombre quieres guardar esta empresa?\n(Si el nombre ya existe, te preguntaré si deseas reemplazarla.)",
+        value: suggestion,
+        okText: "Continuar"
+      });
+      if(input === null) return null;
+      input = input.trim();
+      if(!input){ alert("Escribe un nombre para continuar."); continue; }
+      if(reserved.some(function(r){ return normName(r) === normName(input); })){
+        alert("Ese nombre ya lo usaste para otra empresa de este mismo archivo. Elige otro."); continue;
+      }
+      if(findCompanyByName(input) === undefined) return { name: input };
+      if(confirm('Ya existe una empresa llamada "' + input + '".\n\nAceptar = REEMPLAZAR su información\nCancelar = elegir otro nombre')) return { name: input };
+      suggestion = uniqueName(input.replace(/\s*\(\d+\)$/, ""), reserved);
+    }
+  }
+
+  function importCompanies(list){
+    list.forEach(normalizeState);
+    var pick = list.length > 1
+      ? pickModal({
+          title: "Este archivo contiene " + list.length + " empresas",
+          text: "Marca cuáles quieres importar. Se te pedirá el nombre de cada una y no se tocará ninguna otra empresa.",
+          items: list.map(function(s, i){ return { id: String(i), label: (s.empresa || "").trim() || ("Empresa " + (i + 1)), sub: productsSub(s) }; }),
+          okText: "Importar"
+        })
+      : Promise.resolve(["0"]);
+
+    return pick.then(async function(sel){
+      if(!sel){ setIoNote("Importación cancelada."); return; }
+      save();
+      var reserved = [], done = [], firstId = null;
+      for(var n = 0; n < sel.length; n++){
+        var s = list[parseInt(sel[n], 10)];
+        var res = await askCompanyName(s.empresa, n, sel.length, reserved);
+        if(!res) continue;
+        reserved.push(res.name);
+        s.empresa = res.name;
+        var id = findCompanyByName(res.name);
+        if(id === undefined) id = cid();
+        companies[id] = s;
+        if(firstId === null) firstId = id;
+        done.push(res.name);
+      }
+      if(!done.length){ setIoNote("Importación cancelada."); return; }
+      activeCompanyId = firstId;
+      state = normalizeState(companies[firstId]);
+      save();
+      switchTo(ALL_ID);
+      renderCompanies();
+      closeDrawer();
+      setIoNote("Importadas " + done.length + (done.length === 1 ? " empresa: " : " empresas: ") + done.join(", ") + ".");
+    });
+  }
+
+  /* ---------- JSON ---------- */
+  document.getElementById("btn-exportar").addEventListener("click", function(){
+    chooseCompaniesToExport("JSON").then(function(list){
+      if(!list) return;
+      var labels = uniqueLabels(list);
+      list.forEach(function(s, i){ s.empresa = labels[i]; });
+      var payload = { formato: "costos-multi-v1", empresas: list };
+      var blob = new Blob([JSON.stringify(payload, null, 2)], {type:"application/json"});
+      var a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+      a.download = fileBase(list, labels) + "_costos_equilibrio.json"; a.click();
+      setIoNote("Exportadas " + list.length + (list.length === 1 ? " empresa." : " empresas."));
+    });
+  });
+
+  document.getElementById("btn-importar").addEventListener("click", function(){ document.getElementById("file-input").click(); });
+  document.getElementById("file-input").addEventListener("change", function(e){
+    var input = e.target;
+    var file = input.files[0]; if(!file) return;
+    var reader = new FileReader();
+    reader.onload = function(evt){
+      var obj = null;
+      try{ obj = JSON.parse(evt.target.result); }catch(err){ alert("Archivo JSON no válido."); }
+      input.value = "";
+      if(!obj) return;
+      var list = [];
+      if(Array.isArray(obj.empresas)) list = obj.empresas.filter(function(x){ return x && x.products; });
+      else if(obj.products) list = [obj];
+      if(!list.length){ alert("El JSON no contiene empresas ni productos."); return; }
+      importCompanies(list);
+    };
+    reader.readAsText(file);
+  });
+
+  /* ---------- Excel: exportar ---------- */
+  var SHEET_RESUMEN = "Punto Equilibrio";
+  var SHEET_EMPRESA = "Empresa";
+  var SHEET_PRODUCTOS = "Productos";
+  var SHEET_COSTOS = "Costos Producto";
+  var SHEET_GENERALES = "Costos Generales";
+  var TIPO_LABEL = { fijos: "Fijo directo", variables: "Variable", inversion: "Inversión" };
+
+  document.getElementById("btn-exportar-excel").addEventListener("click", function(){
+    if(typeof XLSX === "undefined") { alert("Biblioteca de Excel no cargada."); return; }
+    chooseCompaniesToExport("Excel").then(function(list){
+      if(!list) return;
+      var labels = uniqueLabels(list);
+      var wb = XLSX.utils.book_new();
+      var summaryData = [], empresaRows = [], prodRows = [], costRows = [], genRows = [];
+
+      list.forEach(function(s, i){
+        var emp = labels[i];
+        var fin = getFinancials(s);
+        fin.products.forEach(function(p){
+          summaryData.push({
+            "Empresa": emp,
+            "Producto": p.producto,
+            "Ventas Est (Unid)": p.cap,
+            "Personas por venta": p.personasPorVenta,
+            "Personas / Clientes": p.personasTotal,
+            "Precio por venta": p.precio,
+            "Precio Venta Total": p.ingresosTotales,
+            "Utilidad %": Math.round(p.utilidadPct * 1000) / 10,
+            "Costo Var Total": p.varTotales,
+            "Margen Contrib Total": p.margenContribUnit * p.cap,
+            "Costos Fijos Directos": p.fijosDirectos,
+            "Gastos Generales Asignados": p.genAsignado,
+            "Unidades Equilibrio": p.peUnidadesPonderado,
+            "Venta Equilibrio (Q)": p.peVentasPonderado,
+            "Utilidad Est": p.utilidadCiclo
+          });
+        });
+
+        var cc = s.customColors || {};
+        empresaRows.push({
+          "Empresa": emp,
+          "Color ganancia": cc.good || "#10b981",
+          "Color pérdida": cc.bad || "#ef4444",
+          "Color ingresos": cc.accent || "#3b82f6",
+          "Color equilibrio": cc.gold || "#f59e0b",
+          "Orden gráficas": (s.chartOrder || []).join(",")
+        });
+
+        s.products.forEach(function(p){
+          var row = {
+            "Empresa": emp,
+            "ID": p.id,
+            "Producto": p.producto || "",
+            "Ciclo": p.ciclo || "mes",
+            "Capacidad / Venta (unid)": Number(p.capacidad) || 0,
+            "Precio por venta": Number(p.precio) || 0,
+            "Personas por venta": Number(p.personasPorVenta) || 0,
+            "Crecimiento %": Number(p.crecimiento) || 0,
+            "Tipo crecimiento": p.tipoCrecimiento || "ciclo",
+            "Ciclos por año": Number(p.ciclosAnio) || 12
+          };
+          for(var e = 0; e < 12; e++){ row["Estac. Ciclo " + (e + 1) + " %"] = Number(p.estacion && p.estacion[e]) || 0; }
+          prodRows.push(row);
+          ["fijos","variables","inversion"].forEach(function(k){
+            (p[k] || []).forEach(function(r){
+              costRows.push({
+                "Empresa": emp,
+                "ID Producto": p.id,
+                "Producto": p.producto || "",
+                "Tipo": TIPO_LABEL[k],
+                "Concepto": r.c || "",
+                "Cantidad": Number(r.cant) || 0,
+                "Costo Unitario": Number(r.cu) || 0,
+                "Total": (Number(r.cant) || 0) * (Number(r.cu) || 0)
+              });
+            });
+          });
+        });
+
+        (s.generales || []).forEach(function(r){
+          genRows.push({
+            "Empresa": emp,
+            "Concepto": r.c || "",
+            "Cantidad": Number(r.cant) || 0,
+            "Costo Unitario": Number(r.cu) || 0,
+            "Total": (Number(r.cant) || 0) * (Number(r.cu) || 0)
+          });
+        });
+      });
+
+      function sheet(rows, headers){
+        return rows.length ? XLSX.utils.json_to_sheet(rows) : XLSX.utils.aoa_to_sheet([headers]);
+      }
+      XLSX.utils.book_append_sheet(wb, sheet(summaryData, ["Empresa","Producto"]), SHEET_RESUMEN);
+      XLSX.utils.book_append_sheet(wb, sheet(empresaRows, ["Empresa"]), SHEET_EMPRESA);
+      XLSX.utils.book_append_sheet(wb, sheet(prodRows, ["Empresa","ID","Producto"]), SHEET_PRODUCTOS);
+      XLSX.utils.book_append_sheet(wb, sheet(costRows, ["Empresa","ID Producto","Producto","Tipo","Concepto","Cantidad","Costo Unitario","Total"]), SHEET_COSTOS);
+      XLSX.utils.book_append_sheet(wb, sheet(genRows, ["Empresa","Concepto","Cantidad","Costo Unitario","Total"]), SHEET_GENERALES);
+
+      XLSX.writeFile(wb, fileBase(list, labels) + "_analisis_costos.xlsx");
+      setIoNote("Exportadas " + list.length + (list.length === 1 ? " empresa." : " empresas."));
+    });
+  });
+
+  /* ---------- Excel: importar ---------- */
+  function num(v){
+    if(typeof v === "number") return isFinite(v) ? v : 0;
+    var n = parseFloat(String(v==null?"":v).replace(/[Q\s,]/g, ""));
+    return isFinite(n) ? n : 0;
+  }
+  function pick(row, names){
+    for(var i = 0; i < names.length; i++){
+      if(row[names[i]] !== undefined && row[names[i]] !== "") return row[names[i]];
+    }
+    return "";
+  }
+
+  /* Devuelve { list: [estados], resumen: bool } o null */
+  function workbookToCompanies(wb){
+    function rows(name){
+      var real = wb.SheetNames.find(function(n){ return normName(n) === normName(name); });
+      return real ? XLSX.utils.sheet_to_json(wb.Sheets[real], { defval: "" }) : null;
+    }
+    var map = {}, order = [];
+    function getCo(name){
+      name = String(name==null?"":name).trim();
+      var k = normName(name);
+      if(!map[k]){
+        map[k] = { empresa: name, generales: [], products: [], activeId: ALL_ID,
+          customColors: { good:"#10b981", bad:"#ef4444", accent:"#3b82f6", gold:"#f59e0b" },
+          chartOrder: ["chartComparativo","chartComposicion","chartProyeccion","chartEstacionalidad"] };
+        order.push(k);
+      }
+      return map[k];
+    }
+    function applyRecord(rec){
+      var co = getCo(rec.nombre);
+      if(rec.good) co.customColors.good = String(rec.good);
+      if(rec.bad) co.customColors.bad = String(rec.bad);
+      if(rec.accent) co.customColors.accent = String(rec.accent);
+      if(rec.gold) co.customColors.gold = String(rec.gold);
+      if(rec.orden){
+        var ord = String(rec.orden).split(",").map(function(x){ return x.trim(); }).filter(function(x){ return co.chartOrder.indexOf(x) >= 0; });
+        if(ord.length === co.chartOrder.length) co.chartOrder = ord;
+      }
+      return co;
+    }
+
+    var defaultName = "";
+    var emp = rows(SHEET_EMPRESA);
+    if(emp && emp.length){
+      if(emp[0]["Campo"] !== undefined){            /* formato anterior: Campo / Valor */
+        var rec = { nombre: "" };
+        emp.forEach(function(r){
+          var campo = normName(r["Campo"]), val = r["Valor"];
+          if(campo === "empresa") rec.nombre = String(val||"");
+          else if(campo === "color ganancia") rec.good = val;
+          else if(campo === "color pérdida") rec.bad = val;
+          else if(campo === "color ingresos") rec.accent = val;
+          else if(campo === "color equilibrio") rec.gold = val;
+          else if(campo === "orden gráficas") rec.orden = val;
+        });
+        applyRecord(rec);
+        defaultName = rec.nombre;
+      } else {
+        emp.forEach(function(r){
+          applyRecord({ nombre: pick(r, ["Empresa"]), good: r["Color ganancia"], bad: r["Color pérdida"],
+            accent: r["Color ingresos"], gold: r["Color equilibrio"], orden: r["Orden gráficas"] });
+        });
+        if(order.length === 1) defaultName = map[order[0]].empresa;
+      }
+    }
+    function coOf(r){
+      var n = r["Empresa"];
+      return getCo(n !== undefined && String(n).trim() !== "" ? n : defaultName);
+    }
+
+    var prodRows = rows(SHEET_PRODUCTOS);
+    if(prodRows && prodRows.length){
+      var byKey = {}, byName = {};
+      prodRows.forEach(function(r){
+        var co = coOf(r), ck = normName(co.empresa);
+        var p = blankProduct(String(pick(r, ["Producto"])));
+        var id = String(pick(r, ["ID"]) || "");
+        if(id) p.id = id;
+        p.ciclo = String(pick(r, ["Ciclo"]) || "mes");
+        p.capacidad = num(pick(r, ["Capacidad / Venta (unid)", "Capacidad", "Ventas Est (Unid)"]));
+        p.precio = num(pick(r, ["Precio por venta", "Precio"]));
+        p.personasPorVenta = num(pick(r, ["Personas por venta"]));
+        p.crecimiento = num(pick(r, ["Crecimiento %", "Crecimiento"]));
+        p.tipoCrecimiento = String(pick(r, ["Tipo crecimiento"]) || "ciclo") === "anio" ? "anio" : "ciclo";
+        p.ciclosAnio = num(pick(r, ["Ciclos por año"])) || 12;
+        p.estacion = [];
+        for(var e = 0; e < 12; e++){ p.estacion.push(num(pick(r, ["Estac. Ciclo " + (e + 1) + " %"]))); }
+        co.products.push(p);
+        byKey[ck + "|" + p.id] = p;
+        if(p.producto) byName[ck + "|" + normName(p.producto)] = p;
+      });
+
+      var keyOf = { "fijo directo":"fijos", "fijo":"fijos", "fijos":"fijos", "variable":"variables", "variables":"variables", "inversión":"inversion", "inversion":"inversion" };
+      (rows(SHEET_COSTOS) || []).forEach(function(r){
+        var ck = normName(coOf(r).empresa);
+        var p = byKey[ck + "|" + String(pick(r, ["ID Producto"]))] || byName[ck + "|" + normName(pick(r, ["Producto"]))];
+        var k = keyOf[normName(pick(r, ["Tipo"]))];
+        if(!p || !k) return;
+        p[k].push({ c: String(pick(r, ["Concepto"])), cant: num(pick(r, ["Cantidad"])), cu: num(pick(r, ["Costo Unitario"])) });
+      });
+
+      (rows(SHEET_GENERALES) || []).forEach(function(r){
+        var c = String(pick(r, ["Concepto"]));
+        var cant = num(pick(r, ["Cantidad"])), cu = num(pick(r, ["Costo Unitario"]));
+        if(c || cant || cu) coOf(r).generales.push({ c: c, cant: cant, cu: cu });
+      });
+      return { list: order.map(function(k){ return map[k]; }), resumen: false };
+    }
+
+    /* Respaldo: Excel antiguo con solo la hoja "Punto Equilibrio". */
+    var resumen = rows(SHEET_RESUMEN);
+    if(resumen && resumen.length){
+      var genTot = {};
+      resumen.forEach(function(r){
+        var nombre = String(pick(r, ["Producto"]));
+        if(!nombre || /consolidado/i.test(nombre)) return;
+        var co = coOf(r), ck = normName(co.empresa);
+        var p = blankProduct(nombre);
+        p.capacidad = num(pick(r, ["Ventas Est (Unid)"]));
+        p.precio = num(pick(r, ["Precio por venta"]));
+        p.personasPorVenta = num(pick(r, ["Personas por venta"]));
+        var varTot = num(pick(r, ["Costo Var Total"]));
+        var fijos = num(pick(r, ["Costos Fijos Directos"]));
+        if(varTot > 0) p.variables.push({ c: "Costos variables (importado de Excel)", cant: p.capacidad || 1, cu: p.capacidad > 0 ? varTot / p.capacidad : varTot });
+        if(fijos > 0) p.fijos.push({ c: "Costos fijos directos (importado de Excel)", cant: 1, cu: fijos });
+        genTot[ck] = (genTot[ck] || 0) + num(pick(r, ["Gastos Generales Asignados"]));
+        co.products.push(p);
+      });
+      order.forEach(function(k){
+        if(genTot[k] > 0) map[k].generales.push({ c: "Costos generales (importado de Excel)", cant: 1, cu: genTot[k] });
+      });
+      var list = order.map(function(k){ return map[k]; }).filter(function(c){ return c.products.length; });
+      if(list.length) return { list: list, resumen: true };
+    }
+    return null;
+  }
+
+  document.getElementById("btn-importar-excel").addEventListener("click", function(){ document.getElementById("file-input-excel").click(); });
+  document.getElementById("file-input-excel").addEventListener("change", function(e){
+    var input = e.target;
+    var file = input.files[0]; if(!file) return;
+    if(typeof XLSX === "undefined"){ alert("Biblioteca de Excel no cargada. Revisa tu conexión a internet."); input.value = ""; return; }
+    var reader = new FileReader();
+    reader.onload = function(evt){
+      var parsed = null;
+      try{
+        var wb = XLSX.read(new Uint8Array(evt.target.result), { type: "array" });
+        parsed = workbookToCompanies(wb);
+      }catch(err){
+        console.error(err);
+        alert("No se pudo leer el archivo Excel.");
+        input.value = "";
+        return;
+      }
+      input.value = "";
+      if(!parsed || !parsed.list.length){
+        alert("El Excel no tiene el formato esperado (hojas \"Productos\", \"Costos Producto\", \"Costos Generales\"). Expórtalo desde este panel y vuelve a intentar.");
+        return;
+      }
+      if(parsed.resumen){
+        alert("Este Excel es de una versión anterior y solo trae el resumen. Se reconstruyeron los productos con sus totales de costos (sin el detalle por concepto). Los nuevos Excel que exportes ya incluirán todo el detalle.");
+      }
+      importCompanies(parsed.list);
+    };
+    reader.readAsArrayBuffer(file);
+  });
+
+  renderCompanies();
+
+  /* INICIALIZACIÓN */
+  switchTo(state.activeId || ALL_ID);
+
+})();
+</script>
+</body>
+</html>

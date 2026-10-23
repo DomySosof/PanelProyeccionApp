@@ -1,0 +1,61 @@
+{
+  "name": "panel-proyeccion-2026",
+  "productName": "Panel Proyección 2026",
+  "version": "0.1.0",
+  "description": "Panel de costos, producción y punto de equilibrio multi-producto",
+  "main": "main.js",
+  "private": true,
+  "author": "gesti",
+  "scripts": {
+    "start": "electron .",
+    "smoke": "electron . --smoke",
+    "sync": "node scripts/sync-html.mjs",
+    "icon": "node scripts/make-icon.mjs",
+    "dist": "electron-builder --win nsis",
+    "dist:portable": "electron-builder --win portable"
+  },
+  "devDependencies": {
+    "electron": "^38.0.0",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "com.panel.proyeccion2026",
+    "productName": "Panel Proyección 2026",
+    "copyright": "Copyright © 2026",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "app/**/*",
+      "build/icon.ico",
+      "package.json"
+    ],
+    "asar": true,
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico",
+      "artifactName": "Panel-Proyeccion-2026-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowElevation": true,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Panel Proyección 2026",
+      "deleteAppDataOnUninstall": false,
+      "installerLanguages": ["es_ES"],
+      "language": "1034"
+    }
+  }
+}
