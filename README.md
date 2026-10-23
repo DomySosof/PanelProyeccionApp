@@ -3,6 +3,13 @@
 Tu panel HTML empaquetado como aplicación instalable de Windows con **Electron**.
 No necesita internet: Chart.js, XLSX y la fuente Inter van incluidos dentro de la app.
 
+## Descargar
+
+Última versión publicada: **[Releases →](https://github.com/DomySosof/PanelProyeccionApp/releases/latest)**
+
+- **Instalador:** `Panel-Proyeccion-2026-Setup-0.1.0.exe`
+- **Portable:** `Panel-Proyeccion-2026-Portable-0.1.0.exe` (no requiere instalación)
+
 ## Instalar
 
 1. Entra en la carpeta `dist\`.
